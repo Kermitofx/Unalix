@@ -1,0 +1,1 @@
+Redirection=.*steamcommunity\.com.*\/linkfilter\/\?url\=(.*)

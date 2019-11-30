@@ -1,0 +1,1 @@
+Redirection=.*doubleclick\..*\/.*tag_for_child_directed_treatment\=\;%3F(.*)

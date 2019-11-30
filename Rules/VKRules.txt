@@ -1,0 +1,1 @@
+Redirection=.*vk\.com\/away\.php\?to\=([^&]*)

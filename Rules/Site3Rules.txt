@@ -1,0 +1,1 @@
+Redirection=.*site3\.com.*\?r\=([^&]*)

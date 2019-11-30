@@ -1,0 +1,3 @@
+src\=[^&]+
+platform\=[^&]+
+redirect_source\=[^&]+

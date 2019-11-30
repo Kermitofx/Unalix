@@ -1,0 +1,17 @@
+Redirection=.*l[a-zA-Z]?\.facebook\..*\/.*l\.php\?.*u=((https%3A%2F%2F|http%3A%2F%2F)[^&]*)
+hc_[a-zA-Z_%\[\]0-9]*\=[^&]+
+[a-zA-Z]*ref[a-zA-Z]*\=[^&]+
+__tn__\=[^&]+
+eid\=[^&]+
+__xts__%5B[0-9]%5D\=[^&]+
+__xts__\[[0-9]\]\=[^&]+
+comment_tracking\=[^&]+
+dti\=[^&]+
+app\=[^&]+
+video_source\=[^&]+
+ftentidentifier\=[^&]+
+pageid\=[^&]+
+padding\=[^&]+
+ls_ref\=[^&]+
+action_history\=[^&]+
+fbid\=[^&]+

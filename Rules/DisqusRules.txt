@@ -1,0 +1,1 @@
+Redirection=.*disq\.us.*\/.*url\?.*url\=((https%3A%2F%2F|http%3A%2F%2F).*)%3A

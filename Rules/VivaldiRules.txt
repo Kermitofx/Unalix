@@ -1,0 +1,2 @@
+pk_campaign\=[^&]+
+pk_kwd\=[^&]+

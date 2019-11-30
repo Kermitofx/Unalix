@@ -1,0 +1,1 @@
+__twitter_impression\=[^&]+
