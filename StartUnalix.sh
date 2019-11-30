@@ -203,12 +203,12 @@ echo '- Checking internet connection...' && wget --no-check-certificate --spider
 echo '- Importing functions...' && source "$HOME/Unalix/ShellBotCore/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; exit '1'; }
 
 # Start the bot
-echo '- Starting bot...' && SetupUnalix && ShellBot.init -m --token 'YOUR_API_KEY_HERE'
+echo '- Starting bot...' && SetupUnalix && ShellBot.init --token 'YOUR_API_KEY_HERE'
 
 while :
 do
 	# Get updates from the API
-	ShellBot.getUpdates --limit '100' --offset "$(ShellBot.OffsetNext)" --timeout '60'
+	ShellBot.getUpdates --limit '10' --offset "$(ShellBot.OffsetNext)" --timeout '15'
 	
 	# List received data
 	for id in "$(ShellBot.ListUpdates)"
@@ -252,13 +252,13 @@ do
 				CommandOutput="$HOME/Unalix/Outputs/Output-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
 				
 				# Remove the "!cmd" or "/cmd" strings 
-				CommandToRun=$(echo "$message_text" | sed -r 's/^(\!cmd|\/cmd)\s*//g')
-				
-				# Run the command
-				$CommandToRun 2>>"$CommandOutput" 1>>"$CommandOutput"
-		
+				CommandToRun="$(echo "$message_text" | sed -r 's/^(\!cmd|\/cmd)\s*//g; s/\\*//g; s/"\""/'\''/g')"
+
+				# Run the command in a subshell
+				bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"
+
 				# Send the output to the Telegram API
-				[[ $(cat "$CommandOutput" | wc -w) != '0' ]] && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'The command was executed, but no standard output (stdout) could be captured.'; }
+				[[ "$(cat "$CommandOutput" | wc -w)" != '0' ]] && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'The command was executed, but no standard output (stdout) could be captured.'; }
 				
 				# Remove the file with the output and unset variables
 				rm -f "$CommandOutput"; unset 'CommandOutput' 'CommandToRun'
