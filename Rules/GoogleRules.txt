@@ -1,5 +1,5 @@
-Redirection=.*google\..*\/.*url\?.*url\=((https|http)[^&]+)
-Redirection=.*google\..*\/.*url\?.*q\=((https|http)[^&]+)
+Redirection=.*google\..*\/.*url\?.*url\=(https?[^&]+)
+Redirection=.*google\..*\/.*url\?.*q\=(https?[^&]+)
 Redirection=.*google\..*\/.*adurl\=([^&]+)
 ved\=[^&]+
 bi[a-zA-Z]*\=[^&]+

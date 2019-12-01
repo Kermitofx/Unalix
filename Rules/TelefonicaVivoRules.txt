@@ -1,0 +1,3 @@
+site[^&]*
+id_origem_vivo\=[^&]*
+origin\=[^&]*

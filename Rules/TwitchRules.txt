@@ -1,2 +1,2 @@
-tt_medium\=[^&]+
-tt_content\=[^&]+
+tt_medium\=[^&]*
+tt_content\=[^&]*

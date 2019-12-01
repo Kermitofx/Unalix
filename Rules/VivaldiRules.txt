@@ -1,2 +1,2 @@
-pk_campaign\=[^&]+
-pk_kwd\=[^&]+
+pk_campaign\=[^&]*
+pk_kwd\=[^&]*

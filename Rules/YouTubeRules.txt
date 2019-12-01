@@ -1,3 +1,4 @@
-feature\=[^&]+
-gclid\=[^&]+
-kw\=[^&]+
+Redirection=.*youtube\..*\/redirect\?.*q\=([^&]*)
+feature\=[^&]*
+gclid\=[^&]*
+kw\=[^&]*

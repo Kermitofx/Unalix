@@ -3,19 +3,20 @@
 # The network requests function. This will be used to find the direct link of shortened URLs
 MakeNetworkRequest(){
 	# Make request
-	wget -T '25' --no-dns-cache --no-cache --spider --no-proxy --no-check-certificate --no-hsts --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0' "$URL" 2>&1 | grep -Eo '(http|https)://[^ \"]+' > "$CleanURLFilename"
+	timeout -s '9' '25' wget --max-redirect '999' --no-cookies --no-dns-cache --no-cache --spider --no-proxy --no-check-certificate --no-hsts --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0' "$URL" 2>&1 | grep -Eo '(http|https)://[^ \"]+' > "$TrashURLFilename"
 	# Set received data
-	URL=$(cat "$CleanURLFilename"| tail -1); SetFilenameVariables; echo "$URL" > "$TrashURLFilename"
+	URL=$(cat "$TrashURLFilename" | tail -1); SetFilenameVariables; echo "$URL" > "$TrashURLFilename"
 }
 
-# Creat all needed directories
+# Delete placeholder files (from git) and creat all needed directories
 SetupUnalix(){
 	rm -f "$HOME/Unalix/Administrators/placeholder" "$HOME/Unalix/Reports/placeholder"
 	[ -d "$HOME/Unalix/Rules" ] || { mkdir -p "$HOME/Unalix/Rules"; }
+	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -p "$HOME/Unalix/TempFiles"; }
 	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -p "$HOME/Unalix/PatternDetection"; }
-	[ -d "$HOME/Unalix/EndRegex" ] || { mkdir -p "$HOME/Unalix/EndRegex"; }
-	[ -d "$HOME/Unalix/Results" ] || { mkdir -p "$HOME/Unalix/Results"; }
-	[ -d "$HOME/Unalix/Outputs" ] || { mkdir -p "$HOME/Unalix/Outputs"; }
+	[ -d "$HOME/Unalix/TempFiles/EndRegex" ] || { mkdir -p "$HOME/Unalix/TempFiles/EndRegex"; }
+	[ -d "$HOME/Unalix/TempFiles/Results" ] || { mkdir -p "$HOME/Unalix/TempFiles/Results"; }
+	[ -d "$HOME/Unalix/TempFiles/Outputs" ] || { mkdir -p "$HOME/Unalix/TempFiles/Outputs"; }
 	[ -d "$HOME/Unalix/Administrators" ] || { mkdir -p "$HOME/Unalix/Administrators"; }
 	[ -d "$HOME/Unalix/Reports" ] || { mkdir -p "$HOME/Unalix/Reports"; }
 }
@@ -33,12 +34,15 @@ RemoveTrackingParameters(){
 	do
 		sed -ri "s/$RegexRules//g" "$TrashURLFilename"
 	done
+
 	URL=$(cat "$TrashURLFilename"); rm -f "$EndRegex" "$TrashURLFilename"
+
 }
 
 DetectPatterns(){
 	# Import all variables from scripts in "Unalix/PatternDetection"
 	# This is used to decide which regex patterns will be (or not) used to remove tracking parameters of links sent by users
+	# To learn how Unalix decides which regex rules should be used or not, read the ClearURLs wiki at http://gitlab.com/KevinRoebert/ClearUrls/wikis/Technical-details/Rules-file
 	source "$HOME/Unalix/PatternDetection/MozawsPatternDetection.sh" "$URL"
 	source "$HOME/Unalix/PatternDetection/DoubleclickPatternDetection.sh" "$URL"
 	source "$HOME/Unalix/PatternDetection/TechcrunchPatternDetection.sh" "$URL"
@@ -97,6 +101,7 @@ DetectPatterns(){
 	source "$HOME/Unalix/PatternDetection/Site2PatternDetection.sh" "$URL"
 	source "$HOME/Unalix/PatternDetection/NetflixPatternDetection.sh" "$URL"
 	source "$HOME/Unalix/PatternDetection/ShutterstockPatternDetection.sh" "$URL"
+	source "$HOME/Unalix/PatternDetection/TelefonicaVivoPatternDetection.sh" "$URL"
 	# Import all regex patterns that will be used
 	[ "$UseMozawsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/MozawsRules.txt" > "$EndRegex" && unset 'UseMozawsRegex'
 	[ "$UseDoubleclickRegex" = 'true' ] && cat "$HOME/Unalix/Rules/DoubleclickRules.txt" >> "$EndRegex" && unset 'UseDoubleclickRegex'
@@ -158,15 +163,15 @@ DetectPatterns(){
 	[ "$UseNytimesRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NytimesRules.txt" >> "$EndRegex" && unset 'UseNytimesRegex'
 	[ "$UseNypostRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NypostRules.txt" >> "$EndRegex" && unset 'UseNypostRegex'
 	[ "$UseGateRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GateRules.txt" >> "$EndRegex" && unset 'UseGateRegex'
+	[ "$UseTelefonicaVivoRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TelefonicaVivoRules.txt" >> "$EndRegex" && unset 'UseTelefonicaVivoRegex'
 }
 
 # Set filename variables
 SetFilenameVariables(){
-	rm -f "$EndRegex" "$TrashURLFilename" "$CleanURLFilename"
-	unset 'EndRegex' 'TrashURLFilename' 'CleanURLFilename'
-	EndRegex="$HOME/Unalix/EndRegex/Regex-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
-	TrashURLFilename="$HOME/Unalix/Results/TrashURL-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
-	CleanURLFilename="$HOME/Unalix/Results/CleanURL-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
+	rm -f "$EndRegex" "$TrashURLFilename"
+	unset 'EndRegex' 'TrashURLFilename'
+	EndRegex="$HOME/Unalix/TempFiles/EndRegex/Regex-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
+	TrashURLFilename="$HOME/Unalix/TempFiles/Results/TrashURL-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
 }
 
 # This is the main function. It calls all other functions related to removal of tracking parameters
@@ -176,13 +181,17 @@ ParseTrackingParameters(){
 	
 	echo "$URL" > "$TrashURLFilename"
 
-	DetectPatterns; RemoveTrackingParameters
-	
-	MakeNetworkRequest
+	DecodeNonASCII
 
 	DetectPatterns; RemoveTrackingParameters
 	
-	rm -f "$EndRegex" "$TrashURLFilename" "$CleanURLFilename"
+	MakeNetworkRequest
+	
+	DecodeNonASCII
+
+	DetectPatterns; RemoveTrackingParameters
+
+	rm -f "$EndRegex" "$TrashURLFilename"
 	
 }
 
@@ -193,7 +202,15 @@ GetEndResults(){
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
 MakeURLCompatible(){
-	URL=$(echo "$URL" | sed -r 's/\&+//g; s/\&/\\&/g; s/\#/\\#/g; s/\[/\\[/g; s/\]/\\]/g; s/\(/\\(/g; s/\)/\\)/g; s/\?$//g')
+	URL=$(echo "$URL" | sed -r 's/&{2,}/&/g; s/\?&/\?/g; s/&$//; s/\?$//; s/&/\%26/g')
+}
+
+# This function is used to "decode" all (or most of it) ASCII characters
+DecodeNonASCII(){
+	cat "$HOME/Unalix/Rules/NonASCIIRules.txt" | sed -r '/^#/d' | while read -r 'RegexRules'
+	do
+		sed -ri "$RegexRules" "$TrashURLFilename"
+	done
 }
 
 # A basic internet connection check
@@ -203,7 +220,7 @@ echo '- Checking internet connection...' && wget --no-check-certificate --spider
 echo '- Importing functions...' && source "$HOME/Unalix/ShellBotCore/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; exit '1'; }
 
 # Start the bot
-echo '- Starting bot...' && SetupUnalix && ShellBot.init --token 'YOUR_API_KEY_HERE'
+echo '- Starting bot...' && SetupUnalix && ShellBot.init --token "$(cat "$HOME/Unalix/Token/Token.txt" | sed -r '/^#.*|^$/d')"
 
 while :
 do
@@ -249,16 +266,16 @@ do
 			# Verify if the user is an administrator of the bot
 			if [ -f "$HOME/Unalix/Administrators/$message_chat_id" ]; then
 				# Set the filename for all command outputs
-				CommandOutput="$HOME/Unalix/Outputs/Output-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
+				CommandOutput="$HOME/Unalix/TempFiles/Outputs/Output-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
 				
 				# Remove the "!cmd" or "/cmd" strings 
 				CommandToRun="$(echo "$message_text" | sed -r 's/^(\!cmd|\/cmd)\s*//g; s/\\*//g; s/"\""/'\''/g')"
 
 				# Run the command in a subshell
-				bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"
+				timeout -s '9' '25' bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"; ExitStatus="$?"
 
 				# Send the output to the Telegram API
-				[[ "$(cat "$CommandOutput" | wc -w)" != '0' ]] && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'The command was executed, but no standard output (stdout) could be captured.'; }
+				[[ "$(cat "$CommandOutput" | wc -w)" != '0' ]] && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }
 				
 				# Remove the file with the output and unset variables
 				rm -f "$CommandOutput"; unset 'CommandOutput' 'CommandToRun'

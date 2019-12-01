@@ -1,5 +1,5 @@
 Redirection=.*rover\.ebay\.\w{2,}\/rover.*mpre\=([^&]*)
-_trkparms\=[^&]+
-_trksid\=[^&]+
-_from\=[^&]+
-hash\=[^&]+
+_trkparms\=[^&]*
+_trksid\=[^&]*
+_from\=[^&]*
+hash\=[^&]*
