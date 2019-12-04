@@ -20,11 +20,12 @@ mkt_tok\=[^&]*
 hmb_campaign\=[^&]*
 hmb_medium\=[^&]*
 hmb_source\=[^&]*
-[\?|&]?ref[\_]?\=[^&]*
+ref[\_]?\=[^&]*
 gclid\=[^&]*
 otm_[a-zA-Z_]*\=[^&]*
 cmpid\=[^&]*
 os_ehash\=[^&]*
+# The rules below were added by Unalix
 pfm_[a-zA-Z0-9]*\=[^&]*
 sellerId\=[^&]*
 franq\=[^&]*

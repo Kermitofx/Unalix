@@ -1,3 +1,4 @@
+# See http://w3schools.com/tags/ref_urlencode.asp
 s/%20/\%20/g
 s/%21/!/g
 s/%22/"\""/g

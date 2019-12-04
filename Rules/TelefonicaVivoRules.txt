@@ -1,3 +1,4 @@
+# The rules below were added by Unalix
 site[^&]*
 id_origem_vivo\=[^&]*
 origin\=[^&]*

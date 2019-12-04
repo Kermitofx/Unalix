@@ -1,0 +1,2 @@
+# The rule below were added by Unalix
+s/\/amp\//\//g

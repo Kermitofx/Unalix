@@ -1,2 +1,3 @@
 Redirection=.*disq\.us\/.*\?url\=(https?:\/\/.*)
+# The rules below were added by Unalix
 key\=[^&]*

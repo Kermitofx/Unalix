@@ -15,3 +15,5 @@ padding\=[^&]*
 ls_ref\=[^&]*
 action_history\=[^&]*
 fbid\=[^&]*
+# The rules below were added by Unalix
+h\=[^&]*
