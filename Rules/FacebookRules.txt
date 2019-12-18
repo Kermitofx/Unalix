@@ -1,4 +1,6 @@
-Redirection=.*l[a-zA-Z]?\.facebook\..*\/.*l\.php\?.*u=(https?:\/\/[^&]*)
+Redirection=.*l[a-zA-Z]?\.facebook\..*\/.*l\.php\?.*u\=(https?:\/\/[^&]*)
+# The rule below were added by Unalix
+Redirection=.*facebook..*\/\?next\=(https?[^&]*)
 hc_[a-zA-Z_%\[\]0-9]*\=[^&]*
 [a-zA-Z]*ref[a-zA-Z]*\=[^&]*
 __tn__\=[^&]*

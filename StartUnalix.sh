@@ -318,7 +318,7 @@ do
 	# Thread
 	(
 		# Check if the message sent by the user is a valid link
-		if [[ "$message_text" =~ ^(http|https):\/\/.+$ ]]; then
+		if [[ "$message_text" =~ ^https?(://|%3A%2F%2F).+$ ]]; then
 			URL="$message_text" && ParseTrackingParameters && GetEndResults
 
 		# The command "/report" allows users to send messages directly to the bot administrators
