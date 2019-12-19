@@ -19,3 +19,4 @@ action_history\=[^&]*
 fbid\=[^&]*
 # The rules below were added by Unalix
 h\=[^&]*
+login_source\=[^&]*
