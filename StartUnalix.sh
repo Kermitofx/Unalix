@@ -392,6 +392,12 @@ do
 		if [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
 			#while [ "$MessageSent" != 'true' ]; do ShellBot.sendChatAction --chat_id "$message_chat_id" --action 'typing' && sleep '5'; done &
 			URL="$message_text" && ParseTrackingParameters && GetEndResults
+			
+		# Check if the message sent by the user is a link with non-Latin alphabet domain name
+		# Non-Latin alphabet domain names (e.g: президент.рф) need to be decoded to punycode format (e.g: xn--d1abbgf6aiiy.xn--p1ai)
+		elif [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
+			URL="$message_text" && UnicodeDomain=$(echo "$URL" | grep -Eo '[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}') && Punycode=$(idn2 "$UnicodeDomain") && URL=$(echo "$URL" | sed "s/$UnicodeDomain/$Punycode/g")
+			ParseTrackingParameters && GetEndResults
 
 		# The command "/report" allows users to send messages directly to the bot administrators
 		# This is useful for users who want to report bugs or give feedback
