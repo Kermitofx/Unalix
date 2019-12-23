@@ -92,7 +92,7 @@ set -f
 
 readonly _SHELLBOT_SH_=1					# Inicialização
 readonly _BOT_SCRIPT_=${0##*/}				# Script
-readonly _CURL_OPT_='--silent --request'	# CURL (opções)
+readonly _CURL_OPT_='--http2 --ssl-reqd --ssl-no-revoke --no-sessionid --ipv4 --doh-url https://doh-de.blahdns.com/dns-query --silent --request'	# CURL (opções)
 
 # Erros
 readonly _ERR_TYPE_BOOL_='tipo incompatível: suporta somente "true" ou "false".'
@@ -456,7 +456,7 @@ FlushOffset()
 	local sid eid jq_obj
 
 	while :; do
-		jq_obj=$(ShellBot.getUpdates --limit 100 --offset $(ShellBot.OffsetNext))
+		jq_obj=$(ShellBot.getUpdates --limit 100 --offset "$(ShellBot.OffsetNext)")
 		IFS=' ' read -a update_id <<< $(jq -r '.result|.[]|.update_id' <<< $jq_obj)
 		[[ $update_id ]] || break
 		sid=${sid:-${update_id[0]}}
@@ -615,7 +615,7 @@ ShellBot.init()
 	[[ $service 				]]	&& CreateUnitService "$_BOT_SCRIPT_" "${user:-$USER}"
 		   
 	declare -gr _TOKEN_=$token											# TOKEN
-	declare -gr _API_TELEGRAM_="https://api.telegram.org/bot$_TOKEN_"	# API
+	declare -gr _API_TELEGRAM_="https://api.telegram.org:443/bot$_TOKEN_"	# API
 
     # Um método simples para testar o token de autenticação do seu bot. 
     # Não requer parâmetros. Retorna informações básicas sobre o bot em forma de um objeto Usuário.

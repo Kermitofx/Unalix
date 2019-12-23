@@ -5,3 +5,7 @@ sp\=[^&]*
 sc\=[^&]*
 qs\=[^&]*
 qp\=[^&]*
+# The rules below were added by Unalix
+pq\=[^&]*
+toWww\=[^&]*
+redig\=[^&]*

@@ -190,13 +190,11 @@ ParseTrackingParameters(){
 
 	DetectPatterns; RemoveTrackingParameters
 
-	rm -f "$EndRegex" "$TrashURLFilename"
-	
 }
 
 # Get end results and check if it's valid
 GetEndResults(){
-	[[ "$URL" =~ ^(http|https):\/\/.+$ ]] && MakeURLCompatible && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }
+	[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
 }
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
@@ -204,7 +202,7 @@ MakeURLCompatible(){
 	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g' | iconv -f 'UTF-8' -t 'ISO-8859-1')
 }
 
-# This function is used to "decode" all (or most of it) ASCII characters
+# This function is used to "decode" all (or most of it) non-ASCII characters
 DecodeNonASCII(){
 	cat "$HOME/Unalix/Rules/NonASCIIRules.txt" | sed -r '/^#.*|^$/d' | while read -r 'RegexRules'
 	do

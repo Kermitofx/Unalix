@@ -21,3 +21,5 @@ terminal_id\=[^&]*
 (aff_)?trace(_key)?\=[^&]*
 tt\=[^&]*
 sk\=[^&]*
+trace\=[^&]*
+s\=[^&]*
