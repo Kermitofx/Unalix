@@ -201,7 +201,7 @@ GetEndResults(){
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
 MakeURLCompatible(){
-	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/\%26/g; s/\s/%7F/g')
+	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g' | iconv -f 'UTF-8' -t 'ISO-8859-1')
 }
 
 # This function is used to "decode" all (or most of it) ASCII characters
@@ -213,6 +213,7 @@ DecodeNonASCII(){
 }
 
 cleanup(){
+
 	# Delete all temporarily files
 	rm -f "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput"
 
@@ -223,6 +224,7 @@ cleanup(){
 # This function is used to randomly generate valid user agents. Each request made via wget uses a different user agent
 # This is used to prevent websites accessed from tracing the access history and possibly blocking Unalix due to "suspicious traffic"
 # Client versions are randomly generated, however operating system information is valid
+# Note that the purpose of this function is not to generate real user agents, but to generate user agents in valid format. That's enough to "trick" most websites.
 GenerateUserAgent(){
 
 	# https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
@@ -242,14 +244,20 @@ GenerateUserAgent(){
 	
 	# 0 = Firefox
 	# 1 = Chrome
+	# 2 = Opera
+	# 3 = Vivaldi
 
-	# Generate a random number between 0 and 1
-	BrowserSelection=$(tr -dc '0-1' < '/dev/urandom' | head -c '1')
+	# Generate a random number between 0 and 3
+	BrowserSelection=$(tr -dc '0-3' < '/dev/urandom' | head -c '1')
 
 	if [ "$BrowserSelection" = '0' ]; then
 		GenerateFirefox
 	elif [ "$BrowserSelection" = '1' ]; then
 		GenerateChrome
+	elif [ "$BrowserSelection" = '2' ]; then
+		GenerateOpera
+	elif [ "$BrowserSelection" = '3' ]; then
+		GenerateVivaldi
 	else
 		UserAgent='Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
 	fi
@@ -315,6 +323,54 @@ GenerateFirefox(){
 	fi
 }
 
+# Template: https://www.whatismybrowser.com/guides/the-latest-user-agent/opera
+GenerateOpera(){
+
+	# Generate a random number between 0 and 3
+	SystemSelection=$(tr -dc '0-3' < '/dev/urandom' | head -c '1')
+
+	# Opera on Windows
+	if [ "$SystemSelection" = '0' ]; then
+		UserAgent="Mozilla/5.0 (Windows ${WindowsVersions[$(tr -dc '0-9' < '/dev/urandom' | head -c '1')]}; Win${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}; x${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') OPR/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2')"
+	# Opera on macOS
+	elif [ "$SystemSelection" = '1' ]; then
+		UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X ${macOS_Versions[$(tr -dc '0-9' < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') OPR/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2')"
+	# Opera on Linux
+	elif [ "$SystemSelection" = '2' ]; then
+		UserAgent="Mozilla/5.0 (X11; Linux x86_${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') OPR/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2')"
+	# Opera on Android
+	elif [ "$SystemSelection" = '3' ]; then
+		UserAgent="Mozilla/5.0 (Linux; Android ${AndroidVersions[$(tr -dc '0-9' < '/dev/urandom' | head -c '1')]}; AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Mobile Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') OPR/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2')"
+	else
+		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Opera on Linux)
+		UserAgent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36 OPR/65.0.3467.72'
+	fi
+}
+
+# Template https://www.whatismybrowser.com/guides/the-latest-user-agent/vivaldi
+GenerateVivaldi(){
+
+	# Generate a random number between 0 and 3
+	SystemSelection=$(tr -dc '0-3' < '/dev/urandom' | head -c '1')
+
+	# Vivaldi on Windows
+	if [ "$SystemSelection" = '0' ]; then
+		UserAgent="Mozilla/5.0 (Windows ${WindowsVersions[$(tr -dc '0-9' < '/dev/urandom' | head -c '1')]}; WOW${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Vivaldi/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1')"
+	# Vivaldi on macOS
+	elif [ "$SystemSelection" = '1' ]; then
+		UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X ${macOS_Versions[$(tr -dc '0-9' < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Vivaldi/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1')"
+	# Vivaldi on Linux
+	elif [ "$SystemSelection" = '2' ]; then
+		UserAgent="Mozilla/5.0 (X11; Linux x86_${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Vivaldi/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1')"
+	# Vivaldi on Android (This template was manually picked up by me from Vivaldi Beta for Android)
+	elif [ "$SystemSelection" = '3' ]; then
+		UserAgent="Mozilla/5.0 (Linux; Android ${AndroidVersions[$(tr -dc '0-9' < '/dev/urandom' | head -c '1')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Mobile Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Vivaldi/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '4').$(tr -dc '0-9' < '/dev/urandom' | head -c '2')"
+	else
+		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Vivaldi on Linux)
+		UserAgent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36 Vivaldi/2.9'
+	fi
+}
+
 # A basic internet connection check
 echo '- Checking internet connection...' && wget --spider -T '10' 'https://www.gnu.org:443' 2>> '/dev/null' 1>> '/dev/null' && echo '- Success!' || { echo '* No response received!'; cleanup; }
 
@@ -324,18 +380,19 @@ echo '- Importing functions...' && source "$HOME/Unalix/ShellBotCore/ShellBot.sh
 # Start the bot
 echo '- Starting bot...' && SetupUnalix && ShellBot.init --token "$(cat "$HOME/Unalix/Token/Token.txt" | sed -r '/^#.*|^$/d')"
 
-while :
+while true
 do
 	# Get updates from the API
-	ShellBot.getUpdates --limit '10' --offset "$(ShellBot.OffsetNext)" --timeout '15'
+	ShellBot.getUpdates --limit '1' --offset "$(ShellBot.OffsetNext)" --timeout '25'
 	
 	# List received data
-	for id in "$(ShellBot.ListUpdates)"
+	for id in $(ShellBot.ListUpdates)
 	do
 	# Thread
 	(
 		# Check if the message sent by the user is a valid link
 		if [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
+			#while [ "$MessageSent" != 'true' ]; do ShellBot.sendChatAction --chat_id "$message_chat_id" --action 'typing' && sleep '5'; done &
 			URL="$message_text" && ParseTrackingParameters && GetEndResults
 
 		# The command "/report" allows users to send messages directly to the bot administrators
