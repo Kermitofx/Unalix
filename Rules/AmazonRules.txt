@@ -28,3 +28,8 @@ aaxitk\=[^&]*
 hsa_cr_id\=[^&]*
 sb\-ci\-[a-zA-Z]+\=[^&]*
 rnid\=[^&]*
+# The rules below were added by Unalix
+hv\w{3,6}\=[^&]*
+vtargid\=[^&]*
+h\=[^&]*
+hydadcr\=[^&]*

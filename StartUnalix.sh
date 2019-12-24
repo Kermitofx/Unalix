@@ -199,7 +199,7 @@ GetEndResults(){
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
 MakeURLCompatible(){
-	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g' | iconv -f 'UTF-8' -t 'ISO-8859-1')
+	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g; s/\/$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
 }
 
 # This function is used to "decode" all (or most of it) non-ASCII characters
@@ -223,6 +223,7 @@ cleanup(){
 # This is used to prevent websites accessed from tracing the access history and possibly blocking Unalix due to "suspicious traffic"
 # Client versions are randomly generated, however operating system information is valid
 # Note that the purpose of this function is not to generate real user agents, but to generate user agents in valid format. That's enough to "trick" most websites.
+# To make access even more "random" and secure, run Unalix over the Tor network and change your IP address (get a new identity) regularly (e.g: within 15 or 30 minutes).
 GenerateUserAgent(){
 
 	# https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions

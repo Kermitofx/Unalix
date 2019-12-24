@@ -21,5 +21,5 @@ terminal_id\=[^&]*
 (aff_)?trace(_key)?\=[^&]*
 tt\=[^&]*
 sk\=[^&]*
-trace\=[^&]*
+# The rules below were added by Unalix
 s\=[^&]*
