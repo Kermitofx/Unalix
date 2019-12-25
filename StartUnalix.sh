@@ -17,6 +17,10 @@ SetupUnalix(){
 	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -p "$HOME/Unalix/PatternDetection"; }
 	[ -d "$HOME/Unalix/Administrators" ] || { mkdir -p "$HOME/Unalix/Administrators"; }
 	[ -d "$HOME/Unalix/Reports" ] || { mkdir -p "$HOME/Unalix/Reports"; }
+	
+	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
+	source "$HOME/Unalix/Settings/Settings.txt" || { echo '* An error occurred while trying to import the settings file!'; }
+
 }
 
 # Remove trackings parameters using regex patterns stored in the "$EndRegex" file
@@ -180,15 +184,15 @@ ParseTrackingParameters(){
 	
 	echo "$URL" > "$TrashURLFilename"
 
-	DecodeNonASCII
+	DecodeASCII
 
-	DetectPatterns; RemoveTrackingParameters
+	DetectPatterns; SolveURLIssues; RemoveTrackingParameters
 	
 	MakeNetworkRequest
 	
-	DecodeNonASCII
+	DecodeASCII
 
-	DetectPatterns; RemoveTrackingParameters
+	DetectPatterns; SolveURLIssues; RemoveTrackingParameters
 
 }
 
@@ -199,12 +203,12 @@ GetEndResults(){
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
 MakeURLCompatible(){
-	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g; s/\/$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
+	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/&$//; s/\?$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g; s/%23/%2523/g; s/\/$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
 }
 
 # This function is used to "decode" all (or most of it) non-ASCII characters
-DecodeNonASCII(){
-	cat "$HOME/Unalix/Rules/NonASCIIRules.txt" | sed -r '/^#.*|^$/d' | while read -r 'RegexRules'
+DecodeASCII(){
+	cat "$HOME/Unalix/Rules/ASCIIRules.txt" | sed -r '/^#.*|^$/d' | while read -r 'RegexRules'
 	do
 		sed -ri "$RegexRules" "$TrashURLFilename"
 	done
@@ -370,6 +374,29 @@ GenerateVivaldi(){
 	fi
 }
 
+# Try to solve character decoding issues
+SolveURLIssues(){
+	# Fix twitter search
+	if [[ "$(cat $TrashURLFilename)" =~ .*twitter\.com/search\?q\=.* ]]; then
+		sed -i 's/q=#/q=%23/g' "$TrashURLFilename"
+	fi
+}
+
+# Send a message with the text "Unalix is up" or "Unalix is down" when the bot is started or stopped from the terminal
+SendBotStatus(){
+	if [[ "$SEND_STATUS_TO_CHAT" =~ \-?\d* ]]; then
+		if [ "$1" = 'started' ]; then
+			ShellBot.sendMessage --chat_id "$SEND_STATUS_TO_CHAT" --text 'Unalix is up.' || { echo '* An error occurred while trying to send the status!'; }
+		elif [ "$1" = 'stopped' ]; then
+			ShellBot.sendMessage --chat_id "$SEND_STATUS_TO_CHAT" --text 'Unalix is down.' || { echo '* An error occurred while trying to send the status!'; }
+		else
+			echo '* Invalid function call received. "$1" should be "started" or "stopped".'
+		fi
+	else
+		echo '* "$SEND_STATUS_TO_CHAT" contains a invalid value. Bot status will not be sent!'
+	fi
+}
+
 # A basic internet connection check
 echo '- Checking internet connection...' && wget --spider -T '10' 'https://www.gnu.org:443' 2>> '/dev/null' 1>> '/dev/null' && echo '- Success!' || { echo '* No response received!'; cleanup; }
 
@@ -377,7 +404,12 @@ echo '- Checking internet connection...' && wget --spider -T '10' 'https://www.g
 echo '- Importing functions...' && source "$HOME/Unalix/ShellBotCore/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; cleanup; }
 
 # Start the bot
-echo '- Starting bot...' && SetupUnalix && ShellBot.init --token "$(cat "$HOME/Unalix/Token/Token.txt" | sed -r '/^#.*|^$/d')"
+echo '- Starting bot...' && SetupUnalix && ShellBot.init --token "$BOT_TOKEN"
+
+# Send "Unalix is up" to "$SEND_STATUS_TO_CHAT"
+SendBotStatus 'started'
+
+trap "SendBotStatus 'stopped'; cleanup; exit '0'" INT TERM
 
 while true
 do
@@ -406,21 +438,21 @@ do
 		# The maximum number of characters per message is 4096, and this does not include the text "/report"
 		elif [[ "$message_text" =~ ^(\!report|/report)$ ]]; then
 			# Send  basic command usage information
-			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`' --parse_mode 'markdown'
+			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\nor\n`!report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`' --parse_mode 'markdown'
 
 
 			# Check if the commands "/report" and "!report" are followed by one or more character
 		elif [[ "$message_text" =~ ^(\!report|/report).+$ ]]; then
 			# Check if there is already a saved report with the same user ID
 			if [ -f "$HOME/Unalix/Reports/$message_chat_id" ]; then
-				ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "You have previously submitted a report. Wait for it to be viewed by an administrator or delete it using \`/delete_report_${message_chat_id[$id]}\` or \`!delete_report_${message_chat_id[$id]}\`." --parse_mode 'markdown'
+				ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "You have previously submitted a report. Wait for it to be viewed by an administrator or delete it using \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown'
 			else
 				# Save the report at "$HOME/Unalix/Reports/$message_chat_id"
-				echo "$message_text" | sed -r 's/^(\!report|\/report)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your report has been submitted.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
+				echo "$message_text" | sed -r 's/^(\!report|\/report)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
 				# Tell all bot administrators that a user has submitted a new report
 				cd "$HOME/Unalix/Administrators"; ls | while read -r 'BotAdministrators'
 				do
-					ShellBot.sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`${message_chat_first_name}\`\n*Username:* \`${message_chat_username}\`\n*Language:* \`${message_from_language_code}\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`${message_message_id}\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { ShellBot.sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`${message_chat_first_name}\`\n*Username:* \`${message_chat_username}\`\n*Language:* \`${message_from_language_code}\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`${message_message_id}\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
+					ShellBot.sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { ShellBot.sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
 				done
 			fi
 
@@ -429,7 +461,7 @@ do
 		# Only administrators who have their user IDs saved in "$HOME/Unalix/Administrators" can use this command inside Telegram
 		elif [[ "$message_text" =~ ^(\!cmd|/cmd)$ ]]; then
 			# Send  basic command usage information
-			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command>`\nor\n`!cmd <command>`' --parse_mode 'markdown'
+			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command> <parameter>`\nor\n`!cmd <command> <parameter>`\n\n*Example:*\n\n`/cmd neofetch --stdout %26%26 echo "$?"`\nor\n`!cmd neofetch --stdout %26%26 echo "$?"`' --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 
 
 		# Check if the command "/cmd" are followed by a command
@@ -447,28 +479,28 @@ do
 				# Remove the file with the output and unset variables
 				cleanup
 			else
-				ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, so you are not authorized to execute this command.'
+				ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, and therefore you are not authorized to execute commands through the terminal.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 			fi
 
 
 		# The command "delete_report" allows users to delete a report that was previously submitted.
 		elif [[ "$message_text" =~ ^(/delete_report|\!delete_report)$ ]]; then
 			# Send  basic command usage information
-			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`" --parse_mode 'markdown'
+			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`" --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 
 
 			# Check if the command "delete_report_" are followed by a user ID
 		elif [[ "$message_text" =~ ^(/delete_report_|\!delete_report_).{6,}$ ]]; then
 			# Remove the strings "/delete_report_" and "!delete_report_" from the variable
-			DeletionRequest_ID=$(echo "$message_text" | sed -r 's/^(\/delete_report_|\!delete_report_)//g')
+			DeletionRequestID=$(echo "$message_text" | sed -r 's/^(\/delete_report_|\!delete_report_)//g')
 			# Check if the request ID and the the user ID are the same
-			if [ "$DeletionRequest_ID" = "$message_from_id" ]; then
+			if [ "$DeletionRequestID" = "$message_from_id" ]; then
 				# Check for any reports previously submitted by the user
 				if [ -f "$HOME/Unalix/Reports/$message_from_id" ]; then
 					# Delete the report submitted by the user and send the result to the Telegram API
 					rm -f "$HOME/Unalix/Reports/$message_from_id" && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your report has been successfully deleted.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete your report.'; }
 				else
-					ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have no saved reports.'
+					ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have no saved reports.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 				fi
 
 			# Bot administrators have privileges, so they can delete reports submitted by other users
@@ -477,18 +509,20 @@ do
 			# Check if the used are a valid administrator
 			elif [ -f "$HOME/Unalix/Administrators/$message_from_id" ]; then
 				# Check for any reports previously submitted by the specified user ID
-				if [ -f "$HOME/Unalix/Reports/$DeletionRequest_ID" ]; then
+				if [ -f "$HOME/Unalix/Reports/$DeletionRequestID" ]; then
 					# Delete the report and send the result to the Telegram API
-					rm -f "$HOME/Unalix/Reports/$DeletionRequest_ID" && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This report has been successfully deleted.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete this report.'; }
+					rm -f "$HOME/Unalix/Reports/$DeletionRequestID" && ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This report has been successfully deleted.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete this report.'; }
 				else
-					ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "There are no reports associated with this user ID (\`$DeletionRequest_ID\`)." --parse_mode 'markdown'
+					ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "There are no reports associated with this user ID (\`$DeletionRequestID\`)." --parse_mode 'markdown' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 				fi
 			else
-				ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have attempted to delete a report that does not belong to your user ID. Only bot administrators can perform this action.'
+				ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have attempted to delete a report that does not belong to your user ID. Only bot administrators can perform this action.' || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 			fi
 		else
-			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https://`.' --parse_mode 'markdown' 2>/dev/null
+			ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https://`.' --parse_mode 'markdown' 2>/dev/null || { ShellBot.sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 		fi
 	) &
 	done
 done
+
+trap - INT TERM

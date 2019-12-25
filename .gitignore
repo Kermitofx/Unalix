@@ -1,11 +1,11 @@
-# Bot token
-Token/*
+# Bot settings
+Settings/
 
 # Administrators list
-Administrators/*
+Administrators/
 
 # Users' reports
-Reports/*
+Reports/
 
 # Temporarily files
-TempFiles/*
+TempFiles/
