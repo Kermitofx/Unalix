@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if echo "$1" | grep -Eq '.*'; then
 	echo "$1" | grep -Eq '.*([\.]?matrix\.org)(\/_matrix)\/.*' && UseGenericRegex='false'
 	echo "$1" | grep -Eq '.*([\.]?prismic\.io).*' && UseGenericRegex='false'

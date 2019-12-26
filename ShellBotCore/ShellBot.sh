@@ -1,37 +1,5 @@
 #!/bin/bash
 
-#-----------------------------------------------------------------------------------------------------------
-#	DATA:				07 de Março de 2017
-#	SCRIPT:				ShellBot.sh
-#	VERSÃO:				6.2
-#	DESENVOLVIDO POR:	Juliano Santos [SHAMAN]
-#	PÁGINA:				http://www.shellscriptx.blogspot.com.br
-#	FANPAGE:			https://www.facebook.com/shellscriptx
-#	GITHUB:				https://github.com/shellscriptx
-# 	CONTATO:			shellscriptx@gmail.com
-#
-#	DESCRIÇÃO:			ShellBot é uma API não-oficial desenvolvida para facilitar a criação de 
-#						bots na plataforma TELEGRAM. Constituída por uma coleção de métodos
-#						e funções que permitem ao desenvolvedor:
-#
-#							* Gerenciar grupos, canais e membros.
-#							* Enviar mensagens, documentos, músicas, contatos e etc.
-#							* Enviar teclados (KeyboardMarkup e InlineKeyboard).
-#							* Obter informações sobre membros, arquivos, grupos e canais.
-#							* Para mais informações consulte a documentação:
-#							  
-#							https://github.com/shellscriptx/ShellBot/wiki
-#
-#						O ShellBot mantém o padrão da nomenclatura dos métodos registrados da
-#						API original (Telegram), assim como seus campos e valores. Os métodos
-#						requerem parâmetros e argumentos para a chamada e execução. Parâmetros
-#						obrigatórios retornam uma mensagem de erro caso o argumento seja omitido.
-#					
-#	NOTAS:				Desenvolvida na linguagem Shell Script, utilizando o interpretador de 
-#						comandos BASH e explorando ao máximo os recursos built-in do mesmo,
-#						reduzindo o nível de dependências de pacotes externos.
-#-----------------------------------------------------------------------------------------------------------
-
 [[ $_SHELLBOT_SH_ ]] && return 1
 
 if ! awk 'BEGIN { exit ARGV[1] < 4.3 }' ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}; then
@@ -344,7 +312,7 @@ CreateLog()
 		fmt=${fmt//\{MESSAGE_DATE\}/${mdate:--}}
 		fmt=${fmt//\{MESSAGE_TEXT\}/${mtext:--}}
 		fmt=${fmt//\{ENTITIES_TYPE\}/${etype:--}}
-		fmt=${fmt//\{METHOD\}/${FUNCNAME[2]/main/ShellBot.getUpdates}}
+		fmt=${fmt//\{METHOD\}/${FUNCNAME[2]/main/getUpdates}}
 		fmt=${fmt//\{RETURN\}/$(GetAllValues ${*:2})}
 
 		exec 2<&5
@@ -403,7 +371,7 @@ MessageError()
 	
 	# Lê o tipo de ocorrência.
 	# TG - Erro externo retornado pelo core do telegram.
-	# API - Erro interno gerado pela API do ShellBot.
+	# API - Erro interno gerado pela API do 
 	case $1 in
 		TG)
 			err_param="$(Json '.error_code' ${*:2})"
@@ -456,7 +424,7 @@ FlushOffset()
 	local sid eid jq_obj
 
 	while :; do
-		jq_obj=$(ShellBot.getUpdates --limit 100 --offset "$(ShellBot.OffsetNext)")
+		jq_obj=$(getUpdates --limit 100 --offset "$(OffsetNext)")
 		IFS=' ' read -a update_id <<< $(jq -r '.result|.[]|.update_id' <<< $jq_obj)
 		[[ $update_id ]] || break
 		sid=${sid:-${update_id[0]}}
@@ -514,7 +482,7 @@ _eof
  		systemctl enable $service &>/dev/null && echo -e $ok || \
 		{ echo -e $fail; MessageError API; }
 
-		sed -i -r '/^\s*ShellBot.init\s/s/\s--?(s(ervice)?|u(ser)?\s+\w+)\b//g' "$1"
+		sed -i -r '/^\s*init\s/s/\s--?(s(ervice)?|u(ser)?\s+\w+)\b//g' "$1"
 		systemctl daemon-reload
 
 		echo -n "Iniciando..."
@@ -532,7 +500,7 @@ _eof
 }
 
 # Inicializa o bot, definindo sua API e _TOKEN_.
-ShellBot.init()
+init()
 {
 	local method_return delm ret logfmt jq_obj offset
 	local token monitor flush service user logfile logfmt
@@ -570,7 +538,7 @@ ShellBot.init()
 	   				shift
 	   				;;
 				-f|--flush)
-					# Define a FLAG flush para o método 'ShellBot.getUpdates'. Se ativada, faz com que
+					# Define a FLAG flush para o método 'getUpdates'. Se ativada, faz com que
 					# o método obtenha somente as atualizações disponíveis, ignorando a extração dos
 					# objetos JSON e a inicialização das variáveis.
 					flush=true
@@ -619,7 +587,7 @@ ShellBot.init()
 
     # Um método simples para testar o token de autenticação do seu bot. 
     # Não requer parâmetros. Retorna informações básicas sobre o bot em forma de um objeto Usuário.
-    ShellBot.getMe()
+    getMe()
     {
     	# Chama o método getMe passando o endereço da API, seguido do nome do método.
     	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.})
@@ -630,7 +598,7 @@ ShellBot.init()
     	return $?
     }
 
-	ShellBot.getMe &>/dev/null || MessageError API "$_ERR_TOKEN_UNAUTHORIZED_" '[-t, --token]'
+	getMe &>/dev/null || MessageError API "$_ERR_TOKEN_UNAUTHORIZED_" '[-t, --token]'
 	
 	# Salva as informações do bot.
 	declare -gr _BOT_INFO_=(
@@ -653,17 +621,17 @@ ShellBot.init()
 
     # SHELLBOT (FUNÇÕES)
 	# Inicializa as funções para chamadas aos métodos da API do telegram.
-	ShellBot.ListUpdates(){ echo ${!update_id[@]}; }
-	ShellBot.TotalUpdates(){ echo ${#update_id[@]}; }
-	ShellBot.OffsetEnd(){ local -i offset=${update_id[@]: -1}; echo $offset; }
-	ShellBot.OffsetNext(){ echo $((${update_id[@]: -1}+1)); }
+	ListUpdates(){ echo ${!update_id[@]}; }
+	TotalUpdates(){ echo ${#update_id[@]}; }
+	OffsetEnd(){ local -i offset=${update_id[@]: -1}; echo $offset; }
+	OffsetNext(){ echo $((${update_id[@]: -1}+1)); }
    	
-	ShellBot.token() { echo "${_BOT_INFO_[0]}"; }
-	ShellBot.id() { echo "${_BOT_INFO_[1]}"; }
-	ShellBot.first_name() { echo "${_BOT_INFO_[2]}"; }
-	ShellBot.username() { echo "${_BOT_INFO_[3]}"; }
+	token() { echo "${_BOT_INFO_[0]}"; }
+	id() { echo "${_BOT_INFO_[1]}"; }
+	first_name() { echo "${_BOT_INFO_[2]}"; }
+	username() { echo "${_BOT_INFO_[3]}"; }
   
-	ShellBot.getConfig()
+	getConfig()
 	{
 		local jq_obj
 
@@ -682,7 +650,7 @@ ShellBot.init()
 		return $?	
 	}
 
-    ShellBot.regHandleFunction()
+    regHandleFunction()
     {
     	local function data handle args
     
@@ -728,7 +696,7 @@ ShellBot.init()
    		return 0
     }
     
-	ShellBot.regHandleExec()
+	regHandleExec()
     {
     	local cmd data
     
@@ -768,7 +736,7 @@ ShellBot.init()
    		return 0
     }
     
-    ShellBot.watchHandle()
+    watchHandle()
     {
     	local data flag cmd
 
@@ -809,7 +777,7 @@ ShellBot.init()
     	return 0
     }
     
-    ShellBot.getWebhookInfo()
+    getWebhookInfo()
     {
     	# Variável local
     	local jq_obj
@@ -823,7 +791,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.deleteWebhook()
+    deleteWebhook()
     {
     	# Variável local
     	local jq_obj
@@ -837,7 +805,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.setWebhook()
+    setWebhook()
     {
     	local url certificate max_connections allowed_updates jq_obj
     	
@@ -894,7 +862,7 @@ ShellBot.init()
     	return $?
     }	
     
-    ShellBot.setChatPhoto()
+    setChatPhoto()
     {
     	local chat_id photo jq_obj
     	
@@ -937,7 +905,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.deleteChatPhoto()
+    deleteChatPhoto()
     {
     	local chat_id jq_obj
     	
@@ -973,7 +941,7 @@ ShellBot.init()
     
     }
     
-    ShellBot.setChatTitle()
+    setChatTitle()
     {
     	
     	local chat_id title jq_obj
@@ -1017,7 +985,7 @@ ShellBot.init()
     }
     
     
-    ShellBot.setChatDescription()
+    setChatDescription()
     {
     	
     	local chat_id description jq_obj
@@ -1060,7 +1028,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.pinChatMessage()
+    pinChatMessage()
     {
     	
     	local chat_id message_id disable_notification jq_obj
@@ -1112,7 +1080,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.unpinChatMessage()
+    unpinChatMessage()
     {
     	local chat_id jq_obj
     	
@@ -1147,7 +1115,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.restrictChatMember()
+    restrictChatMember()
     {
     	local	chat_id user_id until_date can_send_messages \
     			can_send_media_messages can_send_other_messages \
@@ -1230,7 +1198,7 @@ ShellBot.init()
     }
     
     
-    ShellBot.promoteChatMember()
+    promoteChatMember()
     {
     	local	chat_id user_id can_change_info can_post_messages \
     			can_edit_messages can_delete_messages can_invite_users \
@@ -1333,7 +1301,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.exportChatInviteLink()
+    exportChatInviteLink()
     {
     	local chat_id jq_obj
     
@@ -1369,7 +1337,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.sendVideoNote()
+    sendVideoNote()
     {
     	local chat_id video_note duration length disable_notification \
     			reply_to_message_id reply_markup jq_obj
@@ -1451,7 +1419,7 @@ ShellBot.init()
     }
     
     
-    ShellBot.InlineKeyboardButton()
+    InlineKeyboardButton()
     {
         local 	__button __line __text __url __callback_data \
                 __switch_inline_query __switch_inline_query_current_chat
@@ -1534,7 +1502,7 @@ ShellBot.init()
     	return $?
     }
     
-    ShellBot.InlineKeyboardMarkup()
+    InlineKeyboardMarkup()
     {
     	local __button __keyboard
 
@@ -1576,7 +1544,7 @@ ShellBot.init()
 		return $?
     }
     
-    ShellBot.answerCallbackQuery()
+    answerCallbackQuery()
     {
     	local callback_query_id text show_alert url cache_time jq_obj
     	
@@ -1641,7 +1609,7 @@ ShellBot.init()
     }
     
     # Cria objeto que representa um teclado personalizado com opções de resposta
-    ShellBot.ReplyKeyboardMarkup()
+    ReplyKeyboardMarkup()
     {
     	# Variáveis locais
     	local __button __resize_keyboard __on_time_keyboard __selective __keyboard
@@ -1719,7 +1687,7 @@ ShellBot.init()
     	return $?
     }
 
-	ShellBot.KeyboardButton()
+	KeyboardButton()
 	{
 		local __text __contact __location __button __line
 
@@ -1788,7 +1756,7 @@ ShellBot.init()
     	return $?
 	}
 	
-	ShellBot.ForceReply()
+	ForceReply()
 	{
 		local selective
 
@@ -1819,7 +1787,7 @@ ShellBot.init()
 		return $?
 	}
 
-	ShellBot.ReplyKeyboardRemove()
+	ReplyKeyboardRemove()
 	{
 		local selective
 
@@ -1851,7 +1819,7 @@ ShellBot.init()
 	}
 
     # Envia mensagens 
-    ShellBot.sendMessage()
+    sendMessage()
     {
     	# Variáveis locais 
     	local chat_id text parse_mode disable_web_page_preview
@@ -1941,7 +1909,7 @@ ShellBot.init()
     }
     
     # Função para reencaminhar mensagens de qualquer tipo.
-    ShellBot.forwardMessage()
+    forwardMessage()
     {
     	# Variáveis locais
     	local chat_id form_chat_id disable_notification message_id jq_obj
@@ -2009,7 +1977,7 @@ ShellBot.init()
     }
     
     # Utilize essa função para enviar fotos.
-    ShellBot.sendPhoto()
+    sendPhoto()
     {
     	# Variáveis locais
     	local chat_id photo caption disable_notification reply_to_message_id reply_markup jq_obj
@@ -2090,7 +2058,7 @@ ShellBot.init()
     }
     
     # Utilize essa função para enviar arquivos de audio.
-    ShellBot.sendAudio()
+    sendAudio()
     {
     	# Variáveis locais
     	local chat_id audio caption duration performer title disable_notification reply_to_message_id reply_markup jq_obj
@@ -2190,7 +2158,7 @@ ShellBot.init()
     }
     
     # Utilize essa função para enviar documentos.
-    ShellBot.sendDocument()
+    sendDocument()
     {
     	# Variáveis locais
     	local chat_id document caption disable_notification reply_to_message_id reply_markup jq_obj
@@ -2269,7 +2237,7 @@ ShellBot.init()
     }
     
     # Utilize essa função para enviat stickers
-    ShellBot.sendSticker()
+    sendSticker()
     {
     	# Variáveis locais
     	local chat_id sticker disable_notification reply_to_message_id reply_markup jq_obj
@@ -2341,7 +2309,7 @@ ShellBot.init()
     	return $?
     }
    
-	ShellBot.getStickerSet()
+	getStickerSet()
 	{
 		local name jq_obj
 		
@@ -2378,7 +2346,7 @@ ShellBot.init()
     	return $?
 	} 
 	
-	ShellBot.uploadStickerFile()
+	uploadStickerFile()
 	{
 		local user_id png_sticker jq_obj
 		
@@ -2425,7 +2393,7 @@ ShellBot.init()
 					
 	}
 
-	ShellBot.setStickerPositionInSet()
+	setStickerPositionInSet()
 	{
 		local sticker position jq_obj
 
@@ -2471,7 +2439,7 @@ ShellBot.init()
 				
 	}
 	
-	ShellBot.deleteStickerFromSet()
+	deleteStickerFromSet()
 	{
 		local sticker jq_obj
 
@@ -2508,7 +2476,7 @@ ShellBot.init()
 				
 	}
 	
-	ShellBot.stickerMaskPosition()
+	stickerMaskPosition()
 	{
 
 		local point x_shift y_shift scale zoom
@@ -2572,7 +2540,7 @@ _EOF
 
 	}
 
-	ShellBot.createNewStickerSet()
+	createNewStickerSet()
 	{
 		local user_id name title png_sticker emojis contains_masks mask_position jq_obj
 		
@@ -2653,7 +2621,7 @@ _EOF
 			
 	}
 	
-	ShellBot.addStickerToSet()
+	addStickerToSet()
 	{
 		local user_id name png_sticker emojis mask_position jq_obj
 		
@@ -2721,7 +2689,7 @@ _EOF
 	}
 
     # Função para enviar arquivos de vídeo.
-    ShellBot.sendVideo()
+    sendVideo()
     {
     	# Variáveis locais
     	local chat_id video duration width height caption disable_notification \
@@ -2833,7 +2801,7 @@ _EOF
     }
     
     # Função para enviar audio.
-    ShellBot.sendVoice()
+    sendVoice()
     {
     	# Variáveis locais
     	local chat_id voice caption duration disable_notification reply_to_message_id reply_markup jq_obj
@@ -2922,7 +2890,7 @@ _EOF
     }
     
     # Função utilizada para enviar uma localidade utilizando coordenadas de latitude e longitude.
-    ShellBot.sendLocation()
+    sendLocation()
     {
     	# Variáveis locais
     	local chat_id latitude longitude live_period
@@ -3014,7 +2982,7 @@ _EOF
     }
     
     # Função utlizada para enviar detalhes de um local.
-    ShellBot.sendVenue()
+    sendVenue()
     {
     	# Variáveis locais
     	local chat_id latitude longitude title address foursquare_id disable_notification reply_to_message_id reply_markup jq_obj
@@ -3117,7 +3085,7 @@ _EOF
     }
     
     # Utilize essa função para enviar um contato + numero
-    ShellBot.sendContact()
+    sendContact()
     {
     	# Variáveis locais
     	local chat_id phone_number first_name last_name disable_notification reply_to_message_id reply_markup jq_obj
@@ -3203,7 +3171,7 @@ _EOF
     }
     
     # Envia uma ação para bot.
-    ShellBot.sendChatAction()
+    sendChatAction()
     {
     	# Variáveis locais
     	local chat_id action jq_obj
@@ -3253,7 +3221,7 @@ _EOF
     }
     
     # Utilize essa função para obter as fotos de um determinado usuário.
-    ShellBot.getUserProfilePhotos()
+    getUserProfilePhotos()
     {
     	# Variáveis locais 
     	local user_id offset limit ind last index max item total jq_obj
@@ -3312,7 +3280,7 @@ _EOF
     }
     
     # Função para listar informações do arquivo especificado.
-    ShellBot.getFile()
+    getFile()
     {
     	# Variáveis locais
     	local file_id jq_obj
@@ -3355,7 +3323,7 @@ _EOF
     }		
     
     # Essa função kicka o usuário do chat ou canal. (somente administradores)
-    ShellBot.kickChatMember()
+    kickChatMember()
     {
     	# Variáveis locais
     	local chat_id user_id until_date jq_obj
@@ -3414,7 +3382,7 @@ _EOF
     }
     
     # Utilize essa função para remove o bot do grupo ou canal.
-    ShellBot.leaveChat()
+    leaveChat()
     {
     	# Variáveis locais
     	local chat_id jq_obj
@@ -3454,7 +3422,7 @@ _EOF
     	
     }
     
-    ShellBot.unbanChatMember()
+    unbanChatMember()
     {
     	local chat_id user_id jq_obj
     
@@ -3501,7 +3469,7 @@ _EOF
     	return $?
     }
     
-    ShellBot.getChat()
+    getChat()
     {
     	# Variáveis locais
     	local chat_id jq_obj
@@ -3541,7 +3509,7 @@ _EOF
     	return $?
     }
     
-    ShellBot.getChatAdministrators()
+    getChatAdministrators()
     {
     	local chat_id total key index jq_obj
     
@@ -3580,7 +3548,7 @@ _EOF
     	return $?
     }
     
-    ShellBot.getChatMembersCount()
+    getChatMembersCount()
     {
     	local chat_id jq_obj
     
@@ -3618,7 +3586,7 @@ _EOF
     	return $?
     }
     
-    ShellBot.getChatMember()
+    getChatMember()
     {
     	# Variáveis locais
     	local chat_id user_id jq_obj
@@ -3666,7 +3634,7 @@ _EOF
     	return $?
     }
     
-    ShellBot.editMessageText()
+    editMessageText()
     {
     	local chat_id message_id inline_message_id text parse_mode disable_web_page_preview reply_markup jq_obj
     	
@@ -3747,7 +3715,7 @@ _EOF
     	
     }
     
-    ShellBot.editMessageCaption()
+    editMessageCaption()
     {
     	local chat_id message_id inline_message_id caption reply_markup jq_obj
     	
@@ -3811,7 +3779,7 @@ _EOF
     	
     }
     
-    ShellBot.editMessageReplyMarkup()
+    editMessageReplyMarkup()
     {
     	local chat_id message_id inline_message_id reply_markup jq_obj
     	
@@ -3871,7 +3839,7 @@ _EOF
     	
     }
     
-    ShellBot.deleteMessage()
+    deleteMessage()
     {
     	local chat_id message_id jq_obj
     	
@@ -3916,7 +3884,7 @@ _EOF
     
     }
    
-	ShellBot.downloadFile()
+	downloadFile()
 	{
 		local file_path dir ext file jq_obj
 		local uri="https://api.telegram.org/file/bot$_TOKEN_"
@@ -3974,7 +3942,7 @@ _EOF
 		return $?
 	}
 
-	ShellBot.editMessageLiveLocation()
+	editMessageLiveLocation()
 	{
 		local chat_id message_id inline_message_id
 		local latitude longitude reply_markup jq_obj
@@ -4050,7 +4018,7 @@ _EOF
     	return $?
 	}	
 
-	ShellBot.stopMessageLiveLocation()
+	stopMessageLiveLocation()
 	{
 		local chat_id message_id inline_message_id reply_markup jq_obj
 		
@@ -4109,7 +4077,7 @@ _EOF
     	return $?
 	}
 
-	ShellBot.setChatStickerSet()
+	setChatStickerSet()
 	{
 		local chat_id sticker_set_name jq_obj
 
@@ -4151,7 +4119,7 @@ _EOF
 		return $?
 	}
 
-	ShellBot.deleteChatStickerSet()
+	deleteChatStickerSet()
 	{
 		local chat_id jq_obj
 
@@ -4185,7 +4153,7 @@ _EOF
     	return $?
 	}
 	
-	ShellBot.inputMedia()
+	inputMedia()
 	{
 		local __type __input __media __caption __parse_mode __thumb __width 
 		local __height __duration __supports_streaming __performer __title
@@ -4295,7 +4263,7 @@ _EOF
 		return $?
 	}
 
-	ShellBot.sendMediaGroup()
+	sendMediaGroup()
 	{
 		local chat_id media disable_notification reply_to_message_id jq_obj
 		
@@ -4353,7 +4321,7 @@ _EOF
     	return $?
 	}
 
-	ShellBot.editMessageMedia()
+	editMessageMedia()
 	{
 		local chat_id message_id inline_message_id media reply_markup jq_obj
 
@@ -4421,7 +4389,7 @@ _EOF
     	return $?
 	}
 
-	ShellBot.sendAnimation()
+	sendAnimation()
 	{
 		local chat_id animation duration width height 
 		local thumb caption parse_mode disable_notification 
@@ -4528,7 +4496,7 @@ _EOF
     	return $?
 	}
 	
-	ShellBot.answerInlineQuery()
+	answerInlineQuery()
 	{
 		local inline_query_id results cache_time is_personal
 		local next_offset switch_pm_text switch_pm_parameter
@@ -4581,7 +4549,7 @@ _EOF
 		
 	}
 	
-	ShellBot.InlineQueryResult()
+	InlineQueryResult()
 	{
 		local __input __type __title __caption __reply_markup __parse_mode
 		local __description __input_message_content __address __audio_duration
@@ -4780,7 +4748,7 @@ _EOF
 		return $?
 	}
 
-	ShellBot.InputMessageContent()
+	InputMessageContent()
 	{
 		local message_text parse_mode disable_web_page_preview json
 		local latitude longitude live_period title address foursquare_id
@@ -4847,7 +4815,7 @@ _EOF
 		return $?
 	}
 
-	ShellBot.setMessageRules()
+	setMessageRules()
 	{
 		local action command user_id username chat_id 
 		local chat_type time date language message_id 
@@ -5091,7 +5059,7 @@ _EOF
 		return $?
 	}
 	
-	ShellBot.manageRules()
+	manageRules()
 	{
 		local uid rule botcmd err tm stime etime ctime mime_type weekday
 		local dt sdate edate cdate mem ent type args status out fwid
@@ -5322,7 +5290,7 @@ _EOF
 			if [[ ${_BOT_RULES_[$i:user_status]} ]]; then
 				case $_BOT_TYPE_RETURN_ in
 					value)
-						out=$(ShellBot.getChatMember 	--chat_id $u_message_chat_id \
+						out=$(getChatMember 	--chat_id $u_message_chat_id \
 														--user_id $u_message_from_id 2>/dev/null)
 							
 						IFS=$_BOT_DELM_ read -a out <<< $out
@@ -5330,13 +5298,13 @@ _EOF
 						status=${out[$(($? ? 6 : 5))]}
 						;;
 					json)
-						out=$(ShellBot.getChatMember 	--chat_id $u_message_chat_id \
+						out=$(getChatMember 	--chat_id $u_message_chat_id \
 														--user_id $u_message_from_id 2>/dev/null)
 							
 						status=$(Json '.result.status' $out)
 						;;
 					map)	
-						ShellBot.getChatMember 	--chat_id $u_message_chat_id \
+						getChatMember 	--chat_id $u_message_chat_id \
 												--user_id $u_message_from_id &>/dev/null
 
 						status=${return[status]}
@@ -5369,19 +5337,19 @@ _EOF
 										"${_BOT_RULES_[$i:action]:--}"			\
 										"${_BOT_RULES_[$i:exec]:--}"			>> "$_BOT_LOG_FILE_"
 
-			[[ ${_BOT_RULES_[$i:bot_reply_message]} ]] && ShellBot.sendMessage	--chat_id $u_message_chat_id																\
+			[[ ${_BOT_RULES_[$i:bot_reply_message]} ]] && sendMessage	--chat_id $u_message_chat_id																\
 																				--reply_to_message_id $u_message_id 														\
 																				--text "$(FlagConv $uid "${_BOT_RULES_[$i:bot_reply_message]}")"							\
 																				${_BOT_RULES_[$i:bot_reply_markup]:+--reply_markup "${_BOT_RULES_[$i:bot_reply_markup]}"}	\
 																				${_BOT_RULES_[$i:bot_parse_mode]:+--parse_mode ${_BOT_RULES_[$i:bot_parse_mode]}}			&>/dev/null
 				
-			[[ ${_BOT_RULES_[$i:bot_send_message]} ]] && ShellBot.sendMessage	--chat_id $u_message_chat_id																\
+			[[ ${_BOT_RULES_[$i:bot_send_message]} ]] && sendMessage	--chat_id $u_message_chat_id																\
 																				--text "$(FlagConv $uid "${_BOT_RULES_[$i:bot_send_message]}")" 							\
 																				${_BOT_RULES_[$i:bot_reply_markup]:+--reply_markup "${_BOT_RULES_[$i:bot_reply_markup]}"}	\
 																				${_BOT_RULES_[$i:bot_parse_mode]:+--parse_mode ${_BOT_RULES_[$i:bot_parse_mode]}}			&>/dev/null
 				
 			for fwid in ${_BOT_RULES_[$i:bot_forward_message]//|/ }; do
-				ShellBot.forwardMessage		--chat_id $fwid						\
+				forwardMessage		--chat_id $fwid						\
 											--from_chat_id $u_message_chat_id 	\
 											--message_id $u_message_id			&>/dev/null
 			done
@@ -5397,7 +5365,7 @@ _EOF
 				read -rN 4096 buffer <<< "$stdout"
 					
 				# Envia o buffer.
-				ShellBot.sendMessage	--chat_id $u_message_chat_id 			\
+				sendMessage	--chat_id $u_message_chat_id 			\
 										--reply_to_message_id $u_message_id		\
 										--text "$buffer"						&>/dev/null
 
@@ -5412,7 +5380,7 @@ _EOF
 		return 1
 	}
 
-    ShellBot.getUpdates()
+    getUpdates()
     {
     	local total_keys offset limit timeout allowed_updates jq_obj
 		local vet val var obj oldv bar
@@ -5472,7 +5440,7 @@ _EOF
 		# Se há atualizações.
     	[[ $(jq -r '.result|length' <<< $jq_obj) -eq 0 ]] && return 0
 	
-		# Se o método 'ShellBot.getUpdates' for invocado a partir de um subshell,
+		# Se o método 'getUpdates' for invocado a partir de um subshell,
 		# as atualizações são retornadas em um estrutura de dados json, o método
 		# é finalizado e variáveis não são inicializadas.
 		[[ $BASH_SUBSHELL -gt 0 ]] && { echo "$jq_obj"; return 0; }
@@ -5520,87 +5488,87 @@ _EOF
 	}
    
 	# Bot métodos (somente leitura)
-	readonly -f ShellBot.token 						\
-				ShellBot.id 						\
-				ShellBot.username 					\
-				ShellBot.first_name 				\
-				ShellBot.getConfig					\
-				ShellBot.regHandleFunction 			\
-				ShellBot.regHandleExec				\
-				ShellBot.watchHandle 				\
-				ShellBot.ListUpdates 				\
-				ShellBot.TotalUpdates 				\
-				ShellBot.OffsetEnd 					\
-				ShellBot.OffsetNext 				\
-				ShellBot.getMe 						\
-				ShellBot.getWebhookInfo 			\
-				ShellBot.deleteWebhook 				\
-				ShellBot.setWebhook 				\
-				ShellBot.init 						\
-				ShellBot.ReplyKeyboardMarkup 		\
-				ShellBot.ForceReply					\
-				ShellBot.ReplyKeyboardRemove		\
-				ShellBot.KeyboardButton				\
-				ShellBot.sendMessage 				\
-				ShellBot.forwardMessage 			\
-				ShellBot.sendPhoto 					\
-				ShellBot.sendAudio 					\
-				ShellBot.sendDocument 				\
-				ShellBot.sendSticker 				\
-				ShellBot.sendVideo 					\
-				ShellBot.sendVideoNote 				\
-				ShellBot.sendVoice 					\
-				ShellBot.sendLocation 				\
-				ShellBot.sendVenue 					\
-				ShellBot.sendContact 				\
-				ShellBot.sendChatAction 			\
-				ShellBot.getUserProfilePhotos 		\
-				ShellBot.getFile 					\
-				ShellBot.kickChatMember 			\
-				ShellBot.leaveChat 					\
-				ShellBot.unbanChatMember 			\
-				ShellBot.getChat 					\
-				ShellBot.getChatAdministrators 		\
-				ShellBot.getChatMembersCount 		\
-				ShellBot.getChatMember 				\
-				ShellBot.editMessageText 			\
-				ShellBot.editMessageCaption 		\
-				ShellBot.editMessageReplyMarkup 	\
-				ShellBot.InlineKeyboardMarkup 		\
-				ShellBot.InlineKeyboardButton 		\
-				ShellBot.answerCallbackQuery 		\
-				ShellBot.deleteMessage 				\
-				ShellBot.exportChatInviteLink 		\
-				ShellBot.setChatPhoto 				\
-				ShellBot.deleteChatPhoto 			\
-				ShellBot.setChatTitle 				\
-				ShellBot.setChatDescription 		\
-				ShellBot.pinChatMessage 			\
-				ShellBot.unpinChatMessage 			\
-				ShellBot.promoteChatMember 			\
-				ShellBot.restrictChatMember 		\
-				ShellBot.getStickerSet 				\
-				ShellBot.uploadStickerFile 			\
-				ShellBot.createNewStickerSet 		\
-				ShellBot.addStickerToSet 			\
-				ShellBot.setStickerPositionInSet 	\
-				ShellBot.deleteStickerFromSet 		\
-				ShellBot.stickerMaskPosition 		\
-				ShellBot.downloadFile 				\
-				ShellBot.editMessageLiveLocation 	\
-				ShellBot.stopMessageLiveLocation 	\
-				ShellBot.setChatStickerSet 			\
-				ShellBot.deleteChatStickerSet 		\
-				ShellBot.sendMediaGroup 			\
-				ShellBot.editMessageMedia 			\
-				ShellBot.inputMedia 				\
-				ShellBot.sendAnimation 				\
-				ShellBot.answerInlineQuery			\
-				ShellBot.InlineQueryResult			\
-				ShellBot.InputMessageContent		\
-				ShellBot.setMessageRules 			\
-				ShellBot.manageRules 				\
-				ShellBot.getUpdates
+	readonly -f token 						\
+				id 						\
+				username 					\
+				first_name 				\
+				getConfig					\
+				regHandleFunction 			\
+				regHandleExec				\
+				watchHandle 				\
+				ListUpdates 				\
+				TotalUpdates 				\
+				OffsetEnd 					\
+				OffsetNext 				\
+				getMe 						\
+				getWebhookInfo 			\
+				deleteWebhook 				\
+				setWebhook 				\
+				init 						\
+				ReplyKeyboardMarkup 		\
+				ForceReply					\
+				ReplyKeyboardRemove		\
+				KeyboardButton				\
+				sendMessage 				\
+				forwardMessage 			\
+				sendPhoto 					\
+				sendAudio 					\
+				sendDocument 				\
+				sendSticker 				\
+				sendVideo 					\
+				sendVideoNote 				\
+				sendVoice 					\
+				sendLocation 				\
+				sendVenue 					\
+				sendContact 				\
+				sendChatAction 			\
+				getUserProfilePhotos 		\
+				getFile 					\
+				kickChatMember 			\
+				leaveChat 					\
+				unbanChatMember 			\
+				getChat 					\
+				getChatAdministrators 		\
+				getChatMembersCount 		\
+				getChatMember 				\
+				editMessageText 			\
+				editMessageCaption 		\
+				editMessageReplyMarkup 	\
+				InlineKeyboardMarkup 		\
+				InlineKeyboardButton 		\
+				answerCallbackQuery 		\
+				deleteMessage 				\
+				exportChatInviteLink 		\
+				setChatPhoto 				\
+				deleteChatPhoto 			\
+				setChatTitle 				\
+				setChatDescription 		\
+				pinChatMessage 			\
+				unpinChatMessage 			\
+				promoteChatMember 			\
+				restrictChatMember 		\
+				getStickerSet 				\
+				uploadStickerFile 			\
+				createNewStickerSet 		\
+				addStickerToSet 			\
+				setStickerPositionInSet 	\
+				deleteStickerFromSet 		\
+				stickerMaskPosition 		\
+				downloadFile 				\
+				editMessageLiveLocation 	\
+				stopMessageLiveLocation 	\
+				setChatStickerSet 			\
+				deleteChatStickerSet 		\
+				sendMediaGroup 			\
+				editMessageMedia 			\
+				inputMedia 				\
+				sendAnimation 				\
+				answerInlineQuery			\
+				InlineQueryResult			\
+				InputMessageContent		\
+				setMessageRules 			\
+				manageRules 				\
+				getUpdates
 
 	offset=${_BOT_FLUSH_:+$(FlushOffset)}	# flush
 	printf -v jq_obj '{"token":"%s","id":%d,"first_name":"%s","username":"%s","offset_start":%d,"offset_end":%d}'	\

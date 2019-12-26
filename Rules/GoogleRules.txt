@@ -37,3 +37,4 @@ sourceid\=[^&]*
 sxsrf\=[^&]*
 # The rules below were added by Unalix
 client\=[^&]*
+referrer\=[^&]*

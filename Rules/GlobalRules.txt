@@ -27,5 +27,8 @@ cmpid\=[^&]*
 os_ehash\=[^&]*
 # The rules below were added by Unalix
 pfm_[a-zA-Z0-9]*\=[^&]*
-sellerId\=[^&]*
+seller(I|i)d\=[^&]*
 franq\=[^&]*
+opn\=[^&]*
+mktportal\=[^&]*
+gclsrc\=[^&]*

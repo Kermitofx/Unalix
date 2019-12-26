@@ -1,0 +1,5 @@
+# This expression removes subdomains "www"
+s/(https?:\/\/)(mobile|m|www)\./\1/g
+# This expression replaces "https" with "http"
+s/^(http|https):\/\//http:\/\//g
+s/m\.(wikipedia\.org)/\1/g
