@@ -213,7 +213,7 @@ ParseTrackingParameters(){
 
 # Get end results and check if it's valid
 GetEndResults(){
-	[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
+	[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus 'break' && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { TypingStatus 'break'; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
 }
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
@@ -232,7 +232,7 @@ DecodeASCII(){
 cleanup(){
 
 	# Delete all temporarily files
-	rm -f "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput"
+	rm -f "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput" "$MessageSent"
 
 	# Exit process
 	exit
@@ -439,6 +439,25 @@ SendBotStatus(){
 	fi
 }
 
+# This function is used to send the action "typing" to the chat of the user who sent a link
+#  This status will be sent while Unalix is processing a link
+TypingStatus(){
+	# This is a loop. The action will be sent when the [-f "$MessageSent" ] command returns a positive value (0)
+	if [ "$1" = 'send' ]; then
+		MessageSent="$HOME/Unalix/TempFiles/MessageSent-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+		touch "$MessageSent"
+		while [ -f "$MessageSent" ]
+		do
+			sendChatAction --chat_id "$message_chat_id" --action 'typing'
+		done &
+	# The loop will be broken when the $MessageSent file is deleted.
+	elif [ "$1" = 'break' ]; then
+		rm -f "$MessageSent"
+	else
+		echo '* Invalid function call received. "$1" should be "send" or "break".'
+	fi
+}
+
 # A basic internet connection check
 echo '- Checking internet connection...' && wget --spider -T '10' 'https://www.gnu.org:443' 2>> '/dev/null' 1>> '/dev/null' && echo '- Success!' || { echo '* No response received!'; cleanup; }
 
@@ -465,12 +484,17 @@ do
 	(
 		# Check if the message sent by the user is a valid link
 		if [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
-			#while [ "$MessageSent" != 'true' ]; do sendChatAction --chat_id "$message_chat_id" --action 'typing' && sleep '5'; done &
+			# Send "typing" status while link is being processed
+			TypingStatus 'send'
+			# Start processing the link
 			URL="$message_text" && ParseTrackingParameters && GetEndResults || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup; }
 			
 		# Check if the message sent by the user is a link with non-Latin alphabet domain name
 		# Non-Latin alphabet domain names (e.g: президент.рф) need to be decoded to punycode format (e.g: xn--d1abbgf6aiiy.xn--p1ai)
 		elif [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
+			# Send "typing" status while link is being processed
+			TypingStatus 'send'
+			# Start processing the link
 			URL="$message_text" && UnicodeDomain=$(echo "$URL" | grep -Eo '[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}') && Punycode=$(idn2 "$UnicodeDomain") && URL=$(echo "$URL" | sed "s/$UnicodeDomain/$Punycode/g") && ParseTrackingParameters && GetEndResults || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup; }
 
 		# The command "/report" allows users to send messages directly to the bot administrators
