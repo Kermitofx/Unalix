@@ -1,8 +1,8 @@
 # Enter your bot's token inside the quotes below.
-# Example: BOT_TOKEN='859220722:AAFLuvMxwJu0aGDjVGnyXoxHOWUPFNzjuzQ'
-BOT_TOKEN=''
+# Example: BotToken='859220722:AAFLuvMxwJu0aGDjVGnyXoxHOWUPFNzjuzQ'
+BotToken=''
 
 # This is the chat to which Unalix will send a message whenever it is started and/or stopped. See @Unalix on Telegram for more information
 # Enter channel, group or private chat ID inside the quotes below. Chat ID must match with this regex "\-?\d+" (without the double quotes)
-# Example: SEND_STATUS_TO_CHAT='-1001344450358'
-SEND_STATUS_TO_CHAT=''
+# Example: StatusChatID='-1001344450358' or StatusChatID='@Unalix'
+StatusChatID=''

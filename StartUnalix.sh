@@ -2,15 +2,18 @@
 
 # The network requests function. This will be used to find the direct link of shortened URLs
 MakeNetworkRequest(){
+
 	GenerateUserAgent
 	# Make request
 	timeout -s '9' '25' wget --max-redirect '999' --ignore-length --no-host-directories --no-cookies --no-dns-cache --no-cache --spider --no-proxy --no-check-certificate --no-hsts --user-agent "$UserAgent" "$URL" 2>&1 | grep -Eo '(http|https)://[^ \"]+' > "$TrashURLFilename"
 	# Set received data
 	URL=$(cat "$TrashURLFilename" | tail -1); SetFilenameVariables; echo "$URL" > "$TrashURLFilename"
+
 }
 
 # Delete placeholder files (from git), creat all needed directories and set all environment variables
 SetupUnalix(){
+
 	rm -f "$HOME/Unalix/Administrators/placeholder" "$HOME/Unalix/Reports/placeholder"
 	[ -d "$HOME/Unalix/Rules" ] || { mkdir -p "$HOME/Unalix/Rules"; }
 	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -p "$HOME/Unalix/TempFiles"; }
@@ -20,25 +23,29 @@ SetupUnalix(){
 	
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
 	source "$HOME/Unalix/Settings/Settings.txt" || { echo '* An error occurred while trying to import the settings file!'; exit; }
+	
+	# Check if $BotToken is a valid value
+	[[ "$BotToken" =~ [0-9]+:[A-Za-z0-9_-]+ ]] && echo $? || { echo '* "$BotToken" contains a invalid value. Unalix cannot be started!'; exit; }
 
 }
 
 # Remove trackings parameters using regex patterns stored in the "$EndRegex" file
 RemoveTrackingParameters(){
+
 	# Parse "redirection" rules
-	cat "$EndRegex" | grep -E '^Redirection\=' | sed -r '/^#.*|^$/d' | sed -r 's/^Redirection\=//g' | while read -r 'RegexRules'
+	for RegexRules in $(cat "$EndRegex" | grep -E '^Redirection\=' | sed -r '/^#.*|^$/d; s/^Redirection\=//g')
 	do
 		sed -ri "s/$RegexRules/\1/g" "$TrashURLFilename"
 	done
 
 	# Remove specific fields
-	cat "$EndRegex" | sed -r '/^Redirection\=/d' | sed -r '/^#.*|^$/d' | while read -r 'RegexRules'
+	for RegexRules in $(cat "$EndRegex" | sed -r '/^Redirection\=/d; /^#.*|^$/d')
 	do
 		sed -ri "s/$RegexRules//g" "$TrashURLFilename"
 	done
 
 	# Parse "special" rules
-	cat "$SpecialEndRegex" | sed -r '/^#.*|^$/d' | while read -r 'SpecialRegexRules'
+	for SpecialRegexRules in $(cat "$SpecialEndRegex" | sed -r '/^#.*|^$/d')
 	do
 		sed -ri "$SpecialRegexRules" "$TrashURLFilename"
 	done
@@ -47,10 +54,10 @@ RemoveTrackingParameters(){
 
 }
 
+# This is used to decide which regex patterns will be (or not) used to remove tracking fields from links sent by users
 DetectPatterns(){
+
 	# Import all variables from scripts in "Unalix/PatternDetection"
-	# This is used to decide which regex patterns will be (or not) used to remove tracking parameters of links sent by users
-	# To learn how Unalix decides which regex rules should be used or not, read the ClearURLs wiki at http://gitlab.com/KevinRoebert/ClearUrls/wikis/Technical-details/Rules-file
 	source "$HOME/Unalix/PatternDetection/MozawsPatternDetection.sh" "$URL"
 	source "$HOME/Unalix/PatternDetection/DoubleclickPatternDetection.sh" "$URL"
 	source "$HOME/Unalix/PatternDetection/TechcrunchPatternDetection.sh" "$URL"
@@ -117,82 +124,85 @@ DetectPatterns(){
 	source "$HOME/Unalix/PatternDetection/MobileFieldsPatternDetection.sh" "$URL"
 
 	# Import all regex patterns that will be used
-	[ "$UseMozawsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/MozawsRules.txt" > "$EndRegex" && unset 'UseMozawsRegex'
-	[ "$UseDoubleclickRegex" = 'true' ] && cat "$HOME/Unalix/Rules/DoubleclickRules.txt" >> "$EndRegex" && unset 'UseDoubleclickRegex'
-	[ "$UseTechcrunchRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TechcrunchRules.txt" >> "$EndRegex" && unset 'UseTechcrunchRegex'
-	[ "$UseFacebookRegex" = 'true' ] && cat "$HOME/Unalix/Rules/FacebookRules.txt" >> "$EndRegex" && unset 'UseFacebookRegex'
-	[ "$UseNetflixRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NetflixRules.txt" >> "$EndRegex" && unset 'UseNetflixRegex'
-	[ "$UseCnetRegex" = 'true' ] && cat "$HOME/Unalix/Rules/CnetRules.txt" >> "$EndRegex" && unset 'UseCnetRegex'
-	[ "$UseAliExpressRegex" = 'true' ] && cat "$HOME/Unalix/Rules/AliExpressRules.txt" >> "$EndRegex" && unset 'UseAliExpressRegex'
-	[ "$UseCurseforgeRegex" = 'true' ] && cat "$HOME/Unalix/Rules/CurseforgeRules.txt" >> "$EndRegex" && unset 'UseCurseforgeRegex'
-	[ "$UseSpiegelRegex" = 'true' ] && cat "$HOME/Unalix/Rules/SpiegelRules.txt" >> "$EndRegex" && unset 'UseSpiegelRegex'
-	[ "$UseYoukuRegex" = 'true' ] && cat "$HOME/Unalix/Rules/YoukuRules.txt" >> "$EndRegex" && unset 'UseYoukuRegex'
-	[ "$UseTwitterRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TwitterRules.txt" >> "$EndRegex" && unset 'UseTwitterRegex'
-	[ "$UsePrvnizpravyRegex" = 'true' ] && cat "$HOME/Unalix/Rules/PrvnizpravyRules.txt" >> "$EndRegex" && unset 'UsePrvnizpravyRegex'
-	[ "$UseBingRegex" = 'true' ] && cat "$HOME/Unalix/Rules/BingRules.txt" >> "$EndRegex" && unset 'UseBingRegex'
-	[ "$UseEbayRegex" = 'true' ] && cat "$HOME/Unalix/Rules/EbayRules.txt" >> "$EndRegex" && unset 'UseEbayRegex'
-	[ "$UseOzonRegex" = 'true' ] && cat "$HOME/Unalix/Rules/OzonRules.txt" >> "$EndRegex" && unset 'UseOzonRegex'
-	[ "$UseLinkedInRegex" = 'true' ] && cat "$HOME/Unalix/Rules/LinkedInRules.txt" >> "$EndRegex" && unset 'UseLinkedInRegex'
-	[ "$UseFacebookRegex" = 'true' ] && cat "$HOME/Unalix/Rules/FacebookRules.txt" >> "$EndRegex" && unset 'UseFacebookRegex'
-	[ "$UseYouTubeRegex" = 'true' ] && cat "$HOME/Unalix/Rules/YouTubeRules.txt" >> "$EndRegex" && unset 'UseYouTubeRegex'
-	[ "$UseDailycodingproblemRegex" = 'true' ] && cat "$HOME/Unalix/Rules/DailycodingproblemRules.txt" >> "$EndRegex" && unset 'UseDailycodingproblemRegex'
-	[ "$UseVivaldiRegex" = 'true' ] && cat "$HOME/Unalix/Rules/VivaldiRules.txt" >> "$EndRegex" && unset 'UseVivaldiRegex'
-	[ "$UseReaddcRegex" = 'true' ] && cat "$HOME/Unalix/Rules/ReaddcRules.txt" >> "$EndRegex" && unset 'UseReaddcRegex'
-	[ "$UseTchiboRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TchiboRules.txt" >> "$EndRegex" && unset 'UseTchiboRegex'
-	[ "$UseVKRegex" = 'true' ] && cat "$HOME/Unalix/Rules/VKRules.txt" >> "$EndRegex" && unset 'UseVKRegex'
-	[ "$UseSiteRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Site.txt" >> "$EndRegex" && unset 'UseSiteRegex'
-	[ "$UseWalmartRegex" = 'true' ] && cat "$HOME/Unalix/Rules/WalmartRules.txt" >> "$EndRegex" && unset 'UseWalmartRegex'
-	[ "$UseNormlRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NormlRules.txt" >> "$EndRegex" && unset 'UseNormlRegex'
-	[ "$UseSteampoweredRegex" = 'true' ] && cat "$HOME/Unalix/Rules/SteampoweredRules.txt" >> "$EndRegex" && unset 'UseSteampoweredRegex'
-	[ "$UseSite2Regex" = 'true' ] && cat "$HOME/Unalix/Rules/Site2Rules.txt" >> "$EndRegex" && unset 'UseSite2Regex'
-	[ "$UseGoogleAdsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GoogleAdsRules.txt" >> "$EndRegex" && unset 'UseGoogleAdsRegex'
-	[ "$UseWootRegex" = 'true' ] && cat "$HOME/Unalix/Rules/WootRules.txt" >> "$EndRegex" && unset 'UseWootRegex'
-	[ "$Use9GAGRegex" = 'true' ] && cat "$HOME/Unalix/Rules/9GAGRules.txt" >> "$EndRegex" && unset 'Use9GAGRegex'
-	[ "$UseImdbRegex" = 'true' ] && cat "$HOME/Unalix/Rules/ImdbRules.txt" >> "$EndRegex" && unset 'UseImdbRegex'
-	[ "$UseMozawsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/MozawsRules.txt" >> "$EndRegex" && unset 'UseMozawsRegex'
-	[ "$UseGitHubRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GitHubRules.txt" >> "$EndRegex" && unset 'UseGitHubRegex'
-	[ "$UseSteamcommunityRegex" = 'true' ] && cat "$HOME/Unalix/Rules/SteamcommunityRules.txt" >> "$EndRegex" && unset 'UseSteamcommunityRegex'
-	[ "$UseShutterstockRegex" = 'true' ] && cat "$HOME/Unalix/Rules/ShutterstockRules.txt" >> "$EndRegex" && unset 'UseShutterstockRegex'
-	[ "$UseNetParadeRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NetParadeRules.txt" >> "$EndRegex" && unset 'UseNetParadeRegex'
-	[ "$UseGovdeliveryRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GovdeliveryRules.txt" >> "$EndRegex" && unset 'UseGovdeliveryRegex'
-	[ "$UseMessengerRegex" = 'true' ] && cat "$HOME/Unalix/Rules/MessengerRules.txt" >> "$EndRegex" && unset 'UseMessengerRegex'
-	[ "$UseGoogleRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GoogleRules.txt" >> "$EndRegex" && unset 'UseGoogleRegex'
-	[ "$UseSmartredirectRegex" = 'true' ] && cat "$HOME/Unalix/Rules/SmartredirectRules.txt" >> "$EndRegex" && unset 'UseSmartredirectRegex'
-	[ "$UseVitamixRegex" = 'true' ] && cat "$HOME/Unalix/Rules/VitamixRules.txt" >> "$EndRegex" && unset 'UseVitamixRegex'
-	[ "$UseIndeedRegex" = 'true' ] && cat "$HOME/Unalix/Rules/IndeedRules.txt" >> "$EndRegex" && unset 'UseIndeedRegex'
-	[ "$UseMozillaZineRegex" = 'true' ] && cat "$HOME/Unalix/Rules/MozillaZineRules.txt" >> "$EndRegex" && unset 'UseMozillaZineRegex'
-	[ "$UseGiphyRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GiphyRules.txt" >> "$EndRegex" && unset 'UseGiphyRegex'
-	[ "$UseGenericRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GlobalRules.txt" >> "$EndRegex" && unset 'UseGenericRegex'
-	[ "$UseTwitchRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TwitchRules.txt" >> "$EndRegex" && unset 'UseTwitchRegex'
-	[ "$UseLinksynergyRegex" = 'true' ] && cat "$HOME/Unalix/Rules/LinksynergyRules.txt" >> "$EndRegex" && unset 'UseLinksynergyRegex'
-	[ "$UseAmazonRegex" = 'true' ] && cat "$HOME/Unalix/Rules/AmazonRules.txt" >> "$EndRegex" && unset 'UseAmazonRegex'
-	[ "$UseTweakersRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TweakersRules.txt" >> "$EndRegex" && unset 'UseTweakersRegex'
-	[ "$UseAmazonAdsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/AmazonAdsRules.txt" >> "$EndRegex" && unset 'UseAmazonAdsRegex'
-	[ "$UseSite3Regex" = 'true' ] && cat "$HOME/Unalix/Rules/Site3Rules.txt" >> "$EndRegex" && unset 'UseSite3Regex'
-	[ "$UseRedditRegex" = 'true' ] && cat "$HOME/Unalix/Rules/RedditRules.txt" >> "$EndRegex" && unset 'UseRedditRegex'
-	[ "$UseDeviantartRegex" = 'true' ] && cat "$HOME/Unalix/Rules/DeviantartRules.txt" >> "$EndRegex" && unset 'UseDeviantartRegex'
-	[ "$UseMozillaRegex" = 'true' ] && cat "$HOME/Unalix/Rules/MozillaRules.txt" >> "$EndRegex" && unset 'UseMozillaRegex'
-	[ "$UseDisqusRegex" = 'true' ] && cat "$HOME/Unalix/Rules/DisqusRules.txt" >> "$EndRegex" && unset 'UseDisqusRegex'
-	[ "$UseHhdotruRegex" = 'true' ] && cat "$HOME/Unalix/Rules/HhdotruRules.txt" >> "$EndRegex" && unset 'UseHhdotruRegex'
-	[ "$UseNytimesRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NytimesRules.txt" >> "$EndRegex" && unset 'UseNytimesRegex'
-	[ "$UseNypostRegex" = 'true' ] && cat "$HOME/Unalix/Rules/NypostRules.txt" >> "$EndRegex" && unset 'UseNypostRegex'
-	[ "$UseGateRegex" = 'true' ] && cat "$HOME/Unalix/Rules/GateRules.txt" >> "$EndRegex" && unset 'UseGateRegex'
-	[ "$UseTelefonicaVivoRegex" = 'true' ] && cat "$HOME/Unalix/Rules/TelefonicaVivoRules.txt" >> "$EndRegex" && unset 'UseTelefonicaVivoRegex'
-	[ "$UseBloggerRegex" = 'true' ] && cat "$HOME/Unalix/Rules/BloggerRules.txt" >> "$EndRegex" && unset 'UseBloggerRegex'
+	[ "$UseMozawsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/MozawsRules.txt" > "$EndRegex" && unset 'UseMozawsRegex'
+	[ "$UseDoubleclickRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/DoubleclickRules.txt" >> "$EndRegex" && unset 'UseDoubleclickRegex'
+	[ "$UseTechcrunchRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/TechcrunchRules.txt" >> "$EndRegex" && unset 'UseTechcrunchRegex'
+	[ "$UseFacebookRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/FacebookRules.txt" >> "$EndRegex" && unset 'UseFacebookRegex'
+	[ "$UseNetflixRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/NetflixRules.txt" >> "$EndRegex" && unset 'UseNetflixRegex'
+	[ "$UseCnetRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/CnetRules.txt" >> "$EndRegex" && unset 'UseCnetRegex'
+	[ "$UseAliExpressRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/AliExpressRules.txt" >> "$EndRegex" && unset 'UseAliExpressRegex'
+	[ "$UseCurseforgeRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/CurseforgeRules.txt" >> "$EndRegex" && unset 'UseCurseforgeRegex'
+	[ "$UseSpiegelRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/SpiegelRules.txt" >> "$EndRegex" && unset 'UseSpiegelRegex'
+	[ "$UseYoukuRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/YoukuRules.txt" >> "$EndRegex" && unset 'UseYoukuRegex'
+	[ "$UseTwitterRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/TwitterRules.txt" >> "$EndRegex" && unset 'UseTwitterRegex'
+	[ "$UsePrvnizpravyRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/PrvnizpravyRules.txt" >> "$EndRegex" && unset 'UsePrvnizpravyRegex'
+	[ "$UseBingRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/BingRules.txt" >> "$EndRegex" && unset 'UseBingRegex'
+	[ "$UseEbayRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/EbayRules.txt" >> "$EndRegex" && unset 'UseEbayRegex'
+	[ "$UseOzonRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/OzonRules.txt" >> "$EndRegex" && unset 'UseOzonRegex'
+	[ "$UseLinkedInRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/LinkedInRules.txt" >> "$EndRegex" && unset 'UseLinkedInRegex'
+	[ "$UseFacebookRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/FacebookRules.txt" >> "$EndRegex" && unset 'UseFacebookRegex'
+	[ "$UseYouTubeRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/YouTubeRules.txt" >> "$EndRegex" && unset 'UseYouTubeRegex'
+	[ "$UseDailycodingproblemRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/DailycodingproblemRules.txt" >> "$EndRegex" && unset 'UseDailycodingproblemRegex'
+	[ "$UseVivaldiRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/VivaldiRules.txt" >> "$EndRegex" && unset 'UseVivaldiRegex'
+	[ "$UseReaddcRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/ReaddcRules.txt" >> "$EndRegex" && unset 'UseReaddcRegex'
+	[ "$UseTchiboRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/TchiboRules.txt" >> "$EndRegex" && unset 'UseTchiboRegex'
+	[ "$UseVKRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/VKRules.txt" >> "$EndRegex" && unset 'UseVKRegex'
+	[ "$UseSiteRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/Site.txt" >> "$EndRegex" && unset 'UseSiteRegex'
+	[ "$UseWalmartRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/WalmartRules.txt" >> "$EndRegex" && unset 'UseWalmartRegex'
+	[ "$UseNormlRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/NormlRules.txt" >> "$EndRegex" && unset 'UseNormlRegex'
+	[ "$UseSteampoweredRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/SteampoweredRules.txt" >> "$EndRegex" && unset 'UseSteampoweredRegex'
+	[ "$UseSite2Regex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/Site2Rules.txt" >> "$EndRegex" && unset 'UseSite2Regex'
+	[ "$UseGoogleAdsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GoogleAdsRules.txt" >> "$EndRegex" && unset 'UseGoogleAdsRegex'
+	[ "$UseWootRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/WootRules.txt" >> "$EndRegex" && unset 'UseWootRegex'
+	[ "$Use9GAGRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/9GAGRules.txt" >> "$EndRegex" && unset 'Use9GAGRegex'
+	[ "$UseImdbRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/ImdbRules.txt" >> "$EndRegex" && unset 'UseImdbRegex'
+	[ "$UseMozawsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/MozawsRules.txt" >> "$EndRegex" && unset 'UseMozawsRegex'
+	[ "$UseGitHubRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GitHubRules.txt" >> "$EndRegex" && unset 'UseGitHubRegex'
+	[ "$UseSteamcommunityRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/SteamcommunityRules.txt" >> "$EndRegex" && unset 'UseSteamcommunityRegex'
+	[ "$UseShutterstockRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/ShutterstockRules.txt" >> "$EndRegex" && unset 'UseShutterstockRegex'
+	[ "$UseNetParadeRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/NetParadeRules.txt" >> "$EndRegex" && unset 'UseNetParadeRegex'
+	[ "$UseGovdeliveryRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GovdeliveryRules.txt" >> "$EndRegex" && unset 'UseGovdeliveryRegex'
+	[ "$UseMessengerRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/MessengerRules.txt" >> "$EndRegex" && unset 'UseMessengerRegex'
+	[ "$UseGoogleRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GoogleRules.txt" >> "$EndRegex" && unset 'UseGoogleRegex'
+	[ "$UseSmartredirectRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/SmartredirectRules.txt" >> "$EndRegex" && unset 'UseSmartredirectRegex'
+	[ "$UseVitamixRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/VitamixRules.txt" >> "$EndRegex" && unset 'UseVitamixRegex'
+	[ "$UseIndeedRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/IndeedRules.txt" >> "$EndRegex" && unset 'UseIndeedRegex'
+	[ "$UseMozillaZineRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/MozillaZineRules.txt" >> "$EndRegex" && unset 'UseMozillaZineRegex'
+	[ "$UseGiphyRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GiphyRules.txt" >> "$EndRegex" && unset 'UseGiphyRegex'
+	[ "$UseGenericRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GlobalRules.txt" >> "$EndRegex" && unset 'UseGenericRegex'
+	[ "$UseTwitchRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/TwitchRules.txt" >> "$EndRegex" && unset 'UseTwitchRegex'
+	[ "$UseLinksynergyRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/LinksynergyRules.txt" >> "$EndRegex" && unset 'UseLinksynergyRegex'
+	[ "$UseAmazonRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/AmazonRules.txt" >> "$EndRegex" && unset 'UseAmazonRegex'
+	[ "$UseTweakersRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/TweakersRules.txt" >> "$EndRegex" && unset 'UseTweakersRegex'
+	[ "$UseAmazonAdsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/AmazonAdsRules.txt" >> "$EndRegex" && unset 'UseAmazonAdsRegex'
+	[ "$UseSite3Regex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/Site3Rules.txt" >> "$EndRegex" && unset 'UseSite3Regex'
+	[ "$UseRedditRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/RedditRules.txt" >> "$EndRegex" && unset 'UseRedditRegex'
+	[ "$UseDeviantartRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/DeviantartRules.txt" >> "$EndRegex" && unset 'UseDeviantartRegex'
+	[ "$UseMozillaRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/MozillaRules.txt" >> "$EndRegex" && unset 'UseMozillaRegex'
+	[ "$UseDisqusRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/DisqusRules.txt" >> "$EndRegex" && unset 'UseDisqusRegex'
+	[ "$UseHhdotruRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/HhdotruRules.txt" >> "$EndRegex" && unset 'UseHhdotruRegex'
+	[ "$UseNytimesRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/NytimesRules.txt" >> "$EndRegex" && unset 'UseNytimesRegex'
+	[ "$UseNypostRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/NypostRules.txt" >> "$EndRegex" && unset 'UseNypostRegex'
+	[ "$UseGateRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/GateRules.txt" >> "$EndRegex" && unset 'UseGateRegex'
+	[ "$UseTelefonicaVivoRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/TelefonicaVivoRules.txt" >> "$EndRegex" && unset 'UseTelefonicaVivoRegex'
+	[ "$UseBloggerRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/BloggerRules.txt" >> "$EndRegex" && unset 'UseBloggerRegex'
 	
 	# "Special" rules
 	[ "$UseGoogleAMPRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Special/GoogleAMPRules.txt" > "$SpecialEndRegex" && unset 'UseGoogleAMPRegex'
 	[ "$UseMobileFieldsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Special/MobileFieldsRules.txt" >> "$SpecialEndRegex" && unset 'UseMobileFieldsRegex'
+
 }
 
 # Set filename variables
 SetFilenameVariables(){
+
 	SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
 	EndRegex="$HOME/Unalix/TempFiles/Regex-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
 	TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+
 }
 
-# This is the main function. It calls all other functions related to removal of tracking parameters
+# This is the main function. It calls all other functions related to removal of tracking fields
 ParseTrackingParameters(){
 
 	SetFilenameVariables
@@ -213,20 +223,26 @@ ParseTrackingParameters(){
 
 # Get end results and check if it's valid
 GetEndResults(){
+
 	[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus 'break' && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { TypingStatus 'break'; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
+
 }
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
 MakeURLCompatible(){
+
 	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g; s/%23/%2523/g; s/(%2F|\/)$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
+
 }
 
 # This function is used to "decode" all (or most of it) non-ASCII characters
 DecodeASCII(){
-	cat "$HOME/Unalix/Rules/ASCIIRules.txt" | sed -r '/^#.*|^$/d' | while read -r 'RegexRules'
+
+	for RegexRules in $(cat "$HOME/Unalix/Rules/Special/ASCIIRules.txt" | sed -r '/^#.*|^$/d')
 	do
 		sed -ri "$RegexRules" "$TrashURLFilename"
 	done
+
 }
 
 cleanup(){
@@ -245,26 +261,34 @@ cleanup(){
 # To make access even more "random" and secure, run Unalix over the Tor network and change your IP address (get a new identity) regularly (e.g: within 15 or 30 minutes).
 GenerateUserAgent(){
 
-	# https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
+	# http://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
 	WindowsVersions=('4.10' 'NT 5.0' '4.90' 'NT 5.1' 'NT 5.2' 'NT 6.0' 'NT 6.1' 'NT 6.2' 'NT 6.3' 'NT 10.0')
 	
-	# https://www.macworld.co.uk/feature/mac/os-x-macos-versions-3662757/
+	# http://macworld.co.uk/feature/mac/os-x-macos-versions-3662757/
 	macOS_Versions=('10.6' '10.7' '10.8' '10.9' '10.10' '10.11' '10.12' '10.13' '10.14' '10.15')
 	
-	# https://en.wikipedia.org/wiki/Android_version_history
+	# http://en.wikipedia.org/wiki/Android_version_history
 	AndroidVersions=('5.1.1' '6.0' '6.0.1' '7.0' '7.1.0' '7.1.2' '8.0' '8.1' '9.0' '10.0')
 	
-	# https://en.wikipedia.org/wiki/IOS_version_history
+	# http://en.wikipedia.org/wiki/IOS_version_history
 	iOSVersions=('4.2.1' '5.1.1' '6.1.6' '7.1.2' '9.3.5' '9.3.6' '10.3.3' '10.3.4' '12.4.4' '13.3')
 	
 	# System architectures
 	SystemArchitectures=('32' '64')
-	
+
+	# Number = Browser
 	# 0 = Firefox
 	# 1 = Chrome
 	# 2 = Opera
 	# 3 = Vivaldi
 	# 4 = Yandex
+	
+	# Number = Operating System
+	# 0 = Windows
+	# 1 = macOS
+	# 2 = Linux
+	# 3 = Android
+	# 4 = iOS
 
 	# Generate a random number between 0 and 4
 	BrowserSelection=$(tr -dc '0-4' < '/dev/urandom' | head -c '1')
@@ -284,13 +308,7 @@ GenerateUserAgent(){
 	fi
 }
 
-# 0 = Windows
-# 1 = macOS
-# 2 = Linux
-# 3 = Android
-# 4 = iOS
-
-# Template: https://www.whatismybrowser.com/guides/the-latest-user-agent/chrome
+# Template: http://whatismybrowser.com/guides/the-latest-user-agent/chrome
 GenerateChrome(){
 
 	# Generate a random number between 0 and 4
@@ -317,7 +335,7 @@ GenerateChrome(){
 	fi
 }
 
-# Template: https://www.whatismybrowser.com/guides/the-latest-user-agent/firefox
+# Template: http://whatismybrowser.com/guides/the-latest-user-agent/firefox
 GenerateFirefox(){
 
 	# Generate a random number between 0 and 4
@@ -344,7 +362,7 @@ GenerateFirefox(){
 	fi
 }
 
-# Template: https://www.whatismybrowser.com/guides/the-latest-user-agent/opera
+# Template: http://whatismybrowser.com/guides/the-latest-user-agent/opera
 GenerateOpera(){
 
 	# Generate a random number between 0 and 3
@@ -368,7 +386,7 @@ GenerateOpera(){
 	fi
 }
 
-# Template https://www.whatismybrowser.com/guides/the-latest-user-agent/vivaldi
+# Template http://whatismybrowser.com/guides/the-latest-user-agent/vivaldi
 GenerateVivaldi(){
 
 	# Generate a random number between 0 and 3
@@ -392,7 +410,7 @@ GenerateVivaldi(){
 	fi
 }
 
-# Template https://www.whatismybrowser.com/guides/the-latest-user-agent/yandex
+# Template http://whatismybrowser.com/guides/the-latest-user-agent/yandex
 GenerateYandex(){
 
 	# Generate a random number between 0 to 1 and between 3 to 4 
@@ -418,30 +436,34 @@ GenerateYandex(){
 
 # Try to solve character decoding issues
 SolveURLIssues(){
+
 	# Fix twitter search
 	if [[ "$(cat $TrashURLFilename)" =~ .*twitter\.com/search\?q\=.* ]]; then
 		sed -i 's/q=#/q=%23/g' "$TrashURLFilename"
 	fi
+
 }
 
-# Send a message with the text "Unalix is up" or "Unalix is down" when the bot is started or stopped from the terminal
+# Send a message with the text "Unalix is up" or "Unalix is down" when the bot is started (bash "$HOME/Unalix/StartUnalix.sh") or stopped (CTRL + C) from the terminal
 SendBotStatus(){
-	if [[ "$SEND_STATUS_TO_CHAT" =~ \-?\d* ]]; then
+
+	if [[ "$StatusChatID" =~ (-?[0-9]+|@?[A-Za-z0-9]{5,32}) ]]; then
 		if [ "$1" = 'started' ]; then
-			sendMessage --chat_id "$SEND_STATUS_TO_CHAT" --text 'Unalix is up.' || { echo '* An error occurred while trying to send the status!'; }
+			sendMessage --chat_id "$StatusChatID" --text 'Unalix is up.' || { echo '* An error occurred while trying to send the status!'; return '1'; }
 		elif [ "$1" = 'stopped' ]; then
-			sendMessage --chat_id "$SEND_STATUS_TO_CHAT" --text 'Unalix is down.' || { echo '* An error occurred while trying to send the status!'; }
+			sendMessage --chat_id "$StatusChatID" --text 'Unalix is down.' || { echo '* An error occurred while trying to send the status!'; return '1'; }
 		else
-			echo '* Invalid function call received. "$1" should be "started" or "stopped".'
+			echo '* Invalid function call received. "$1" should be "started" or "stopped".' ; return '1'
 		fi
 	else
-		echo '* "$SEND_STATUS_TO_CHAT" contains a invalid value. Bot status will not be sent!'
+		echo '* "$StatusChatID" contains a invalid value. Bot status will not be sent!'; return '1'
 	fi
+
 }
 
-# This function is used to send the action "typing" to the chat of the user who sent a link
-#  This status will be sent while Unalix is processing a link
+# This function is used to send the action "typing" to the chat of the user who sent a link. This status will be sent while Unalix is processing a link
 TypingStatus(){
+
 	# This is a loop. The action will be sent when the [-f "$MessageSent" ] command returns a positive value (0)
 	if [ "$1" = 'send' ]; then
 		MessageSent="$HOME/Unalix/TempFiles/MessageSent-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
@@ -456,22 +478,28 @@ TypingStatus(){
 	else
 		echo '* Invalid function call received. "$1" should be "send" or "break".'
 	fi
+
 }
 
 # A basic internet connection check
-echo '- Checking internet connection...' && wget --spider -T '10' 'https://www.gnu.org:443' 2>> '/dev/null' 1>> '/dev/null' && echo '- Success!' || { echo '* No response received!'; cleanup; }
+echo '- Checking internet connection...' && wget --spider -T '10' 'https://www.gnu.org:443/robots.txt' 2>> '/dev/null' 1>> '/dev/null' && echo '- Success!' || { echo '* No response received!'; exit; }
 
-# Import ShellBot API
-echo '- Importing functions...' && source "$HOME/Unalix/ShellBotCore/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; cleanup; }
+# Check if the API can be accessed
+echo '- Checking access to the API...' && wget --spider -T '10' 'https://api.telegram.org:443/robots.txt' 2>> '/dev/null' 1>> '/dev/null' && echo '- Success!' || { echo '* No response received!'; exit; }
+
+# Import ShellBot functions library
+echo '- Importing functions...' && source "$HOME/Unalix/ShellBotCore/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; exit; }
 
 # Start the bot
-echo '- Starting bot...' && SetupUnalix && init --token "$BOT_TOKEN"
+echo '- Starting bot...' && SetupUnalix && init --token "$BotToken" 1>/dev/null
 
-# Send "Unalix is up" to "$SEND_STATUS_TO_CHAT"
-SendBotStatus 'started'
+# Send "Unalix is up" to "$StatusChatID"
+echo '- Trying to send bot status to the chat...' && SendBotStatus 'started' && echo '- Success!'
 
-trap "SendBotStatus 'stopped'; cleanup; exit '0'" INT TERM
+# Trap signals and other events
+trap "echo '- Trying to send bot status to the chat...' && SendBotStatus 'stopped' && echo '- Success!' ; cleanup" INT TERM KILL
 
+echo '- Getting updates from the API...'
 while true
 do
 	# Get updates from the API
