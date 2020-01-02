@@ -1,5 +1,7 @@
 #!/bin/bash
 
+alias TelegramAPICall='curl --http2 $NetworkProtocol $Socks5 $DoHOptions --user-agent "$UserAgent" --ssl-reqd --no-sessionid --silent --request'
+
 [[ $_SHELLBOT_SH_ ]] && return 1
 
 if ! awk 'BEGIN { exit ARGV[1] < 4.3 }' ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}; then
@@ -60,7 +62,6 @@ set -f
 
 readonly _SHELLBOT_SH_=1					# Inicialização
 readonly _BOT_SCRIPT_=${0##*/}				# Script
-readonly _CURL_OPT_='--http2 --ssl-reqd --ssl-no-revoke --no-sessionid --ipv4 --doh-url https://doh-de.blahdns.com/dns-query --silent --request'	# CURL (opções)
 
 # Erros
 readonly _ERR_TYPE_BOOL_='tipo incompatível: suporta somente "true" ou "false".'
@@ -590,7 +591,7 @@ init()
     getMe()
     {
     	# Chama o método getMe passando o endereço da API, seguido do nome do método.
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.})
 
 		# Verifica o status de retorno do método
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -783,7 +784,7 @@ init()
     	local jq_obj
 	
     	# Chama o método getMe passando o endereço da API, seguido do nome do método.
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.})
     	
     	# Verifica o status de retorno do método
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -797,7 +798,7 @@ init()
     	local jq_obj
 	
     	# Chama o método getMe passando o endereço da API, seguido do nome do método.
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.})
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.})
     	
     	# Verifica o status de retorno do método
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -849,7 +850,7 @@ init()
     	
     	[[ $url ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-u, --url]"
     
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${url:+-d url="$url"} \
 									${certificate:+-d certificate="$certificate"} \
 									${max_connections:+-d max_connections="$max_connections"} \
@@ -895,7 +896,7 @@ init()
     	[[ $chat_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $photo ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-p, --photo]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
  									${photo:+-F photo="$photo"})
     
@@ -932,7 +933,7 @@ init()
     	
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     
 		MethodReturn $jq_obj || MessageError TG $jq_obj
     	
@@ -974,7 +975,7 @@ init()
     	[[ $chat_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $title ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-t, --title]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
  									${title:+-d title="$title"})
     
@@ -1018,7 +1019,7 @@ init()
     	[[ $chat_id ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $description ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-d, --description]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
  									${description:+-d description="$description"})
     
@@ -1069,7 +1070,7 @@ init()
     	[[ $chat_id ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
  									${message_id:+-d message_id="$message_id"} \
  									${disable_notification:+-d disable_notification="$disable_notification"})
@@ -1107,7 +1108,7 @@ init()
     	
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     
 		MethodReturn $jq_obj || MessageError TG $jq_obj
     		
@@ -1181,7 +1182,7 @@ init()
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --user_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${user_id:+-d user_id="$user_id"} \
 									${until_date_:+-d until_date="$until_date"} \
@@ -1283,7 +1284,7 @@ init()
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --user_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${user_id:+-d user_id="$user_id"} \
 									${can_change_info:+-d can_change_info="$can_change_info"} \
@@ -1328,7 +1329,7 @@ init()
     
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     	
     	# Testa o retorno do método.
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -1402,7 +1403,7 @@ init()
     	[[ $chat_id ]]		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $video_note ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-v, --video_note]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${video_note:+-F video_note="$video_note"} \
 									${duration:+-F duration="$duration"} \
@@ -1596,7 +1597,7 @@ init()
     	
     	[[ $callback_query_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --callback_query_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${callback_query_id:+-d callback_query_id="$callback_query_id"} \
 									${text:+-d text="$text"} \
 									${show_alert:+-d show_alert="$show_alert"} \
@@ -1892,7 +1893,7 @@ init()
     	# Chama o método da API, utilizando o comando request especificado; Os parâmetros 
     	# e valores são passados no form e lidos pelo método. O retorno do método é redirecionado para o arquivo 'update.Json'.
     	# Variáveis com valores nulos são ignoradas e consequentemente os respectivos parâmetros omitidos.
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${text:+-d text="$text"} \
 									${parse_mode:+-d parse_mode="$parse_mode"} \
@@ -1963,7 +1964,7 @@ init()
     	[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
     
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${from_chat_id:+-d from_chat_id="$from_chat_id"} \
 									${disable_notification:+-d disable_notification="$disable_notification"} \
@@ -2042,7 +2043,7 @@ init()
     	[[ $photo ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-p, --photo]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${photo:+-F photo="$photo"} \
 									${caption:+-F caption="$caption"} \
@@ -2138,7 +2139,7 @@ init()
     	[[ $audio ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-a, --audio]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${audio:+-F audio="$audio"} \
 									${caption:+-F caption="$caption"} \
@@ -2220,7 +2221,7 @@ init()
     	[[ $document ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-d, --document]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${document:+-F document="$document"} \
 									${caption:+-F caption="$caption"} \
@@ -2295,7 +2296,7 @@ init()
     	[[ $sticker ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --sticker]"
     
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${sticker:+-F sticker="$sticker"} \
 									${disable_notification:+-F disable_notification="$disable_notification"} \
@@ -2337,7 +2338,7 @@ init()
     	
 		[[ $name ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-n, --name]"
     	
-		jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} ${name:+-d name="$name"})
+		jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} ${name:+-d name="$name"})
     
 		# Testa o retorno do método
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -2381,7 +2382,7 @@ init()
 		[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-u, --user_id]"
 		[[ $png_sticker ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --png_sticker]"
     	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${user_id:+-F user_id="$user_id"} \
 									${png_sticker:+-F png_sticker="$png_sticker"})
     	
@@ -2427,7 +2428,7 @@ init()
 		[[ $sticker ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --sticker]"
 		[[ $position ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-p, --position]"
     	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${sticker:+-d sticker="$sticker"} \
 									${position:+-d position="$position"})
     	
@@ -2466,7 +2467,7 @@ init()
 		
 		[[ $sticker ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --sticker]"
     	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} ${sticker:+-d sticker="$sticker"})
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} ${sticker:+-d sticker="$sticker"})
     	
 		# Testa o retorno do método
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -2604,7 +2605,7 @@ _EOF
 		[[ $png_sticker ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --png_sticker]"
 		[[ $emojis ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-e, --emojis]"
 	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${user_id:+-F user_id="$user_id"} \
 									${name:+-F name="$name"} \
 									${title:+-F title="$title"} \
@@ -2673,7 +2674,7 @@ _EOF
 		[[ $png_sticker ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --png_sticker]"
 		[[ $emojis ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-e, --emojis]"
 	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${user_id:+-F user_id="$user_id"} \
 									${name:+-F name="$name"} \
 									${png_sticker:+-F png_sticker="$png_sticker"} \
@@ -2780,7 +2781,7 @@ _EOF
     	[[ $video ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-v, --video]"
     
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${video:+-F video="$video"} \
 									${duration:+-F duration="$duration"} \
@@ -2872,7 +2873,7 @@ _EOF
     	[[ $voice ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-v, --voice]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
     								${voice:+-F voice="$voice"} \
     								${caption:+-F caption="$caption"} \
@@ -2965,7 +2966,7 @@ _EOF
     	[[ $longitude ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-g, --longitude]"
     			
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
     								${latitude:+-F latitude="$latitude"} \
     								${longitude:+-F longitude="$longitude"} \
@@ -3066,7 +3067,7 @@ _EOF
     	[[ $address ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-a, --address]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
     								${latitude:+-F latitude="$latitude"} \
     								${longitude:+-F longitude="$longitude"} \
@@ -3154,7 +3155,7 @@ _EOF
     	[[ $first_name ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-f, --first_name]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
     								${phone_number:+-F phone_number="$phone_number"} \
     								${first_name:+-F first_name="$first_name"} \
@@ -3209,7 +3210,7 @@ _EOF
     	[[ $action ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-a, --action]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${action:+-d action="$action"})
     	
@@ -3267,7 +3268,7 @@ _EOF
     	[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-u, --user_id]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${user_id:+-d user_id="$user_id"} \
 									${offset:+-d offset="$offset"} \
 									${limit:+-d limit="$limit"})
@@ -3313,7 +3314,7 @@ _EOF
     	[[ $file_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-f, --file_id]"
     	
     	# Chama o método.
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} ${file_id:+-d file_id="$file_id"})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} ${file_id:+-d file_id="$file_id"})
     
     	# Testa o retorno do método.
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -3369,7 +3370,7 @@ _EOF
     	[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-u, --user_id]"
     	
     	# Chama o método
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${user_id:+-d user_id="$user_id"} \
     								${until_date:+-d until_date="$until_date"})
@@ -3413,7 +3414,7 @@ _EOF
     
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     
     	# Verifica se ocorreu erros durante a chamada do método	
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -3459,7 +3460,7 @@ _EOF
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-u, --user_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${user_id:+-d user_id="$user_id"})
     
@@ -3500,7 +3501,7 @@ _EOF
     
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     
     	# Verifica se ocorreu erros durante a chamada do método	
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -3539,7 +3540,7 @@ _EOF
     
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     
     	# Verifica se ocorreu erros durante a chamada do método	
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -3578,7 +3579,7 @@ _EOF
     
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
     
     	# Verifica se ocorreu erros durante a chamada do método	
     	MethodReturn $jq_obj || MessageError TG $jq_obj
@@ -3624,7 +3625,7 @@ _EOF
     	[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $user_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-u, --user_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ GET $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'GET' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${user_id:+-d user_id="$user_id"})
     
@@ -3699,7 +3700,7 @@ _EOF
 		}
     	
     
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${message_id:+-d message_id="$message_id"} \
     								${inline_message_id:+-d inline_message_id="$inline_message_id"} \
@@ -3765,7 +3766,7 @@ _EOF
     	[[ $chat_id ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
     	
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${message_id:+-d message_id="$message_id"} \
     								${inline_message_id:+-d inline_message_id="$inline_message_id"} \
@@ -3826,7 +3827,7 @@ _EOF
 			[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
 		}
     
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${message_id:+-d message_id="$message_id"} \
      								${inline_message_id:+-d inline_message_id="$inline_message_id"} \
@@ -3873,7 +3874,7 @@ _EOF
     	[[ $chat_id ]] 		|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
     	[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
     
-    	jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+    	jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
     								${message_id:+-d message_id="$message_id"})
     
@@ -4004,7 +4005,7 @@ _EOF
 			[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
 		}
     	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${message_id:+-d message_id="$message_id"} \
 									${inline_message_id:+-d inline_message_id="$inline_message_id"} \
@@ -4065,7 +4066,7 @@ _EOF
 			[[ $message_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --message_id]"
 		}
     	
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${message_id:+-d message_id="$message_id"} \
 									${inline_message_id:+-d inline_message_id="$inline_message_id"} \
@@ -4110,7 +4111,7 @@ _EOF
 		[[ $chat_id ]] 			|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
 		[[ $sticker_set_name ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-s, --sticker_set_name]"
 		
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-d chat_id="$chat_id"} \
 									${sticker_set_name:+-d sticker_set_name="$sticker_set_name"})
 		
@@ -4146,7 +4147,7 @@ _EOF
 
 		[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
 		
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} ${chat_id:+-d chat_id="$chat_id"})
 		
     	MethodReturn $jq_obj || MessageError TG $jq_obj
     	
@@ -4308,7 +4309,7 @@ _EOF
 		[[ $chat_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
 		[[ $media ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --media]"
 		
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
     								${media:+-F media="$media"} \
     								${disable_notification:+-F disable_notification="$disable_notification"} \
@@ -4375,7 +4376,7 @@ _EOF
 		
 		[[ $media ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-m, --media]"
 		
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${message_id:+-F message_id="$message_id"} \
 									${inline_message_id:+-F inline_message_id="$inline_message_id"} \
@@ -4476,7 +4477,7 @@ _EOF
 		[[ $chat_id ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-c, --chat_id]"
 		[[ $animation ]] || MessageError API "$_ERR_PARAM_REQUIRED_" "[-a, --animation]"
 		
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${chat_id:+-F chat_id="$chat_id"} \
 									${animation:+-F animation="$animation"} \
 									${duration:+-F duration="$duration"} \
@@ -4532,7 +4533,7 @@ _EOF
 		[[ $inline_query_id ]] 	|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-i, --inline_query_id]"
 		[[ $results ]] 			|| MessageError API "$_ERR_PARAM_REQUIRED_" "[-r, --results]"
 
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 									${inline_query_id:+-F inline_query_id="$inline_query_id"} \
 									${results:+-F results="$results"} \
 									${cache_time:+-F cache_time="$cache_time"} \
@@ -5427,7 +5428,7 @@ _EOF
     	done
     	
 		# Seta os parâmetros
-		jq_obj=$(curl $_CURL_OPT_ POST $_API_TELEGRAM_/${FUNCNAME#*.} \
+		jq_obj=$(TelegramAPICall 'POST' $_API_TELEGRAM_/${FUNCNAME#*.} \
 								${offset:+-d offset="$offset"} \
 								${limit:+-d limit="$limit"} \
 								${timeout:+-d timeout="$timeout"} \
