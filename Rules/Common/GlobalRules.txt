@@ -32,3 +32,4 @@ franq\=[^&]*
 opn\=[^&]*
 mktportal\=[^&]*
 gclsrc\=[^&]*
+_*twitter_impression\=[^&]*

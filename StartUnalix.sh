@@ -8,7 +8,7 @@ MakeNetworkRequest(){
 	# Make request
 	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$URL" --user-agent "$UserAgent" $DoHOptions | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | grep -Eo '(http|https)://[^ \"]+' >> "$TrashURLFilename"
 	# Set received data
-	URL=$(grep -Eo '(http|https)://[^ \"]+' "$TrashURLFilename" | tail -1 | sed -r 's/\s*//g'); SetFilenameVariables; echo "$URL" > "$TrashURLFilename"
+	URL=$(grep -Eo '(http|https)://[^ \"]+' "$TrashURLFilename" | tail -1 | sed -r 's/\s*//g'); cleanup --delete-files; echo "$URL" > "$TrashURLFilename"
 
 }
 
@@ -54,6 +54,8 @@ SetupUnalix(){
 # Remove trackings parameters using regex patterns stored in the "$EndRegex" file
 RemoveTrackingParameters(){
 
+	echo "$URL" > "$TrashURLFilename"
+
 	# Parse "redirection" rules
 	for RegexRules in $(cat "$EndRegex" | grep -E '^Redirection\=' | sed -r '/^#.*|^$/d; s/^Redirection\=//g')
 	do
@@ -72,7 +74,7 @@ RemoveTrackingParameters(){
 		sed -ri "$SpecialRegexRules" "$TrashURLFilename"
 	done
 
-	URL=$(cat "$TrashURLFilename"); rm -f "$EndRegex" "$SpecialEndRegex" "$TrashURLFilename"
+	URL=$(cat "$TrashURLFilename"); cleanup --delete-files
 
 }
 
@@ -218,9 +220,14 @@ DetectPatterns(){
 # Set filename variables
 SetFilenameVariables(){
 
-	SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
-	EndRegex="$HOME/Unalix/TempFiles/Regex-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
-	TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+	if [ "$1" != '--batch-mode' ]; then
+		SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+		EndRegex="$HOME/Unalix/TempFiles/Regex-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+		TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+	else
+		OriginalLinksFilename="$HOME/Unalix/TempFiles/OriginalLinks-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+		EndResults="$HOME/Unalix/TempFiles/CleanedURLs-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+	fi
 
 }
 
@@ -246,14 +253,22 @@ ParseTrackingParameters(){
 # Get end results and check if it's valid
 GetEndResults(){
 
-	[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus --stop-sending && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
+	if [ "$BatchMode" != 'true' ]; then
+		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus --stop-sending && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
+	else
+		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && URL=$(echo "$URL" | sed 's/\//\\\//g; s/&/\\&/g') && sed -ri "s/\s\(\*\)$/ > $URL/g" "$EndResults" || { echo 'Invalid value received' >> "$EndResults"; }
+	fi
 
 }
 
 # Remove invalid code strokes and escape some characters to avoid errors when submitting the text to the Telegram API
 MakeURLCompatible(){
 
-	URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g; s/%23/%2523/g; s/(%2F|\/)$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
+	if [ "$BatchMode" != 'true' ]; then
+		URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/&/%26/g; s/(\+|\s|%20)/%2520/g; s/%23/%2523/g; s/(%2F|\/)$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
+	else
+		URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/(\+|\s|%2520)/%20/g; s/%2523/%23/g; s/(%2F|\/)$//g' | iconv -s -f 'UTF-8' -t 'ISO-8859-1//IGNORE')
+	fi
 
 }
 
@@ -265,15 +280,21 @@ DecodeASCII(){
 		sed -ri "$RegexRules" "$TrashURLFilename"
 	done
 
+	URL=$(cat "$TrashURLFilename"); cleanup --delete-files
+
 }
 
+# Delete files and and/or exit process
 cleanup(){
 
-	# Delete all temporarily files
-	rm -f "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput" "$MessageSent"
+	if [ "$1" != '--delete-files' ]; then
+		rm -f "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput" "$MessageSent" "$LinksFilename" "$OriginalLinksFilename" "$EndResults"
+		exit
+	else
+		rm -f "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput" "$LinksFilename"
+		return '0'
+	fi
 
-	# Exit process
-	exit
 }
 
 # This function is used to randomly generate valid user agents. Each request made via wget uses a different user agent
@@ -462,8 +483,8 @@ GenerateYandex(){
 SolveURLIssues(){
 
 	# Fix twitter search
-	if [[ "$(cat $TrashURLFilename)" =~ .*twitter\.com/search\?q\=.* ]]; then
-		sed -i 's/q=#/q=%23/g' "$TrashURLFilename"
+	if [[ "$URL" =~ .*twitter\.com/search\?q\=.* ]]; then
+		URL=$(echo "$URL" | sed 's/q=#/q=%23/g')
 	fi
 
 }
@@ -472,9 +493,9 @@ SolveURLIssues(){
 SendBotStatus(){
 
 	if [[ "$StatusChatID" =~ (-?[0-9]+|@?[A-Za-z0-9]{5,32}) ]]; then
-		if [ "$1" = 'started' ]; then
+		if [ "$1" = '--started' ]; then
 			sendMessage --chat_id "$StatusChatID" --text 'Unalix is up.' || { echo '* An error occurred while trying to send the status!'; return '1'; }
-		elif [ "$1" = 'stopped' ]; then
+		elif [ "$1" = '--stopped' ]; then
 			sendMessage --chat_id "$StatusChatID" --text 'Unalix is down.' || { echo '* An error occurred while trying to send the status!'; return '1'; }
 		else
 			echo '* Invalid function call received. "$1" should be "started" or "stopped".' ; return '1'
@@ -500,6 +521,137 @@ TypingStatus(){
 		rm -f "$MessageSent"
 	else
 		echo '* Invalid function call received. "$1" should be "--start-sending" or "--stop-sending".'
+	fi
+
+}
+
+# The command "/report" allows users to send messages directly to the bot administrators. # This is useful for users who want to report bugs or give feedback.
+# To prevent spam, users cannot submit new reports if a saved report already exists associated with their user ID
+BotCommand_report(){
+
+	# Send  basic command usage information
+	if [ "$1" = '--send-usage' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\nor\n`!report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`' --parse_mode 'markdown'
+	# Try to store the submitted report
+	elif [ "$1" = '--store-user-report' ]; then
+		if [ -f "$HOME/Unalix/Reports/$message_chat_id" ]; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "You have previously submitted a report. Wait for it to be viewed by an administrator or delete it using \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown'
+		else
+			echo "$message_text" | sed -r 's/^(\!|\/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
+			for BotAdministrators in $(cd "$HOME/Unalix/Administrators" && ls)
+			do
+				sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
+			done
+		fi
+	else
+		echo '* Invalid function call received. "$1" should be "--send-usage" or "--store-user-report".'; return '1'
+	fi
+
+}
+
+# The command "/cmd" is used to execute commands inside the terminal where Unalix is running
+# Only administrators who have their user IDs saved in "$HOME/Unalix/Administrators" can use this command inside Telegram
+BotCommand_cmd(){
+
+	# Send  basic command usage information
+	if [ "$1" = '--send-usage' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command> <parameter>`\nor\n`!cmd <command> <parameter>`\n\n*Example:*\n\n`/cmd neofetch --stdout %26%26 echo "$?"`\nor\n`!cmd neofetch --stdout %26%26 echo "$?"`' --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }	
+	# Try to run the command on terminal
+	elif [ "$1" = '--run-on-terminal' ]; then
+		if [ -f "$HOME/Unalix/Administrators/$message_chat_id" ]; then
+			CommandOutput="$HOME/Unalix/TempFiles/Output-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+			CommandToRun=$(echo "$message_text" | sed -r 's/^(\!|\/)(C|c)(M|m)(D|d)\s*//g; s/\\*//g; s/"\""/'\''/g')
+			timeout -s '9' "$ConnectionTimeout" bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"; ExitStatus="$?"
+			[[ "$(cat "$CommandOutput" | wc -w)" != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }
+			cleanup
+		else
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, and therefore you are not authorized to execute commands through the terminal.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
+		fi
+	else
+		echo '* Invalid function call received. "$1" should be "--send-usage" or "--run-on-terminal".'; return '1'
+	fi
+
+}
+
+# The command "/delete_report" allows users to delete a report that was previously submitted.
+# Bot administrators have privileges, so they can delete reports submitted by other users
+BotCommand_del_report(){
+
+	# Send  basic command usage information
+	if [ "$1" = '--send-usage' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
+	# Try to delete the report
+	elif [ "$1" = '--delete-user-report' ]; then
+		DeletionRequestID=$(echo "$message_text" | sed -r 's/^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_//g')
+		if [ "$DeletionRequestID" = "$message_from_id" ]; then
+			if [ -f "$HOME/Unalix/Reports/$message_from_id" ]; then
+				rm -f "$HOME/Unalix/Reports/$message_from_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your report has been successfully deleted.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete your report.'; }
+			else
+				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have no saved reports.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
+			fi
+		elif [ -f "$HOME/Unalix/Administrators/$message_from_id" ]; then
+			if [ -f "$HOME/Unalix/Reports/$DeletionRequestID" ]; then
+				rm -f "$HOME/Unalix/Reports/$DeletionRequestID" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This report has been successfully deleted.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete this report.'; }
+			else
+				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "There are no reports associated with this user ID (\`$DeletionRequestID\`)." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
+			fi
+		else
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have attempted to delete a report that does not belong to your user ID. Only bot administrators can perform this action.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
+		fi
+	else
+		echo '* Invalid function call received. "$1" should be "--send-usage" or "--delete-user-report".'; return '1'
+	fi
+
+}
+
+# Process links sent by users
+ProcessLinks(){
+
+	# Process common links. Links considered "common" are those that have a domain name in Latin alphabet (e.g: gnu.org)
+	if [ "$1" = '--normal-links' ]; then
+		LinksFilename="$HOME/Unalix/TempFiles/Links-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+		echo -e "$message_text" | grep -Eo '\bhttps?(://|%3A%2F%2F)[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?[^"'\'' ]*' > "$LinksFilename"
+
+		if [[ $(cat "$LinksFilename" | wc -l) -gt '1' ]]; then
+			TypingStatus --start-sending && SetFilenameVariables --batch-mode && BatchMode='true' && mv "$LinksFilename" "$OriginalLinksFilename"
+			for URL in $(cat "$OriginalLinksFilename"); do
+				echo "$URL (*)" >> "$EndResults"
+				ParseTrackingParameters && GetEndResults
+			done
+			TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$EndResults" && cleanup || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "An error occurred while trying to process your request."; }; cleanup
+		else
+			rm -f "$LinksFilename"
+		fi
+
+		TypingStatus --start-sending
+		URL="$message_text" && ParseTrackingParameters && GetEndResults || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup; }
+	
+	# Process IDN links. These links have domain names in non-Latin alphabet (e.g: президент.рф)
+	elif [ "$1" = '--idn-links' ]; then
+
+		LinksFilename="$HOME/Unalix/TempFiles/Links-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
+		echo -e "$message_text" | grep -Eo '\bhttps?(://|%3A%2F%2F)[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}(:\d{1,5})?(/|%2F|\?|#)?[^"'\'' ]*' > "$LinksFilename"
+
+		if [[ $(cat "$LinksFilename" | wc -l) -gt '1' ]]; then
+			TypingStatus --start-sending && SetFilenameVariables --batch-mode && BatchMode='true' && mv "$LinksFilename" "$OriginalLinksFilename"
+			for URL in $(cat "$OriginalLinksFilename" | grep -Eo '[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}')
+			do
+				sed -i "s/$URL/$(idn2 $URL)/" "$OriginalLinksFilename"
+			done
+			for URL in $(cat "$OriginalLinksFilename")
+			do
+				echo "$URL (*)" >> "$EndResults"
+				ParseTrackingParameters && GetEndResults
+			done
+			TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$EndResults" && cleanup || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "An error occurred while trying to process your request."; }; cleanup
+		else
+			rm -f "$LinksFilename"
+		fi
+
+		TypingStatus --start-sending
+		URL="$message_text" && UnicodeDomain=$(echo "$URL" | grep -Eo '[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}') && Punycode=$(idn2 "$UnicodeDomain") && URL=${URL//$UnicodeDomain/$Punycode} && ParseTrackingParameters && GetEndResults || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup; }
+	else
+		echo '* Invalid function call received. "$1" should be "--normal-links" or "--idn-links".'; return '1'
 	fi
 
 }
@@ -534,121 +686,32 @@ do
 	# Get updates from the API
 	GenerateUserAgent
 	getUpdates --limit '1' --offset "$(OffsetNext)" --timeout '25'
-	
+
 	# List received data
 	for id in $(ListUpdates)
 	do
+	
+	# Check if the text sent is part of a file (e.g: photo, video, document)
+	[ "${#message_text}" = '1' ] && message_text="$message_caption"
+	
 	# Thread
 	(
-		# Check if the message sent by the user is a valid link
-		if [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
-	
-			# Send "typing" status while link is being processed
-			TypingStatus --start-sending
-			# Start processing the link
-			URL="$message_text" && ParseTrackingParameters && GetEndResults || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup; }
-			
-		# Check if the message sent by the user is a link with non-Latin alphabet domain name
-		# Non-Latin alphabet domain names (e.g: президент.рф) need to be decoded to punycode format (e.g: xn--d1abbgf6aiiy.xn--p1ai)
-		elif [[ "$message_text" =~ ^https?(://|%3A%2F%2F)[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}(:\d{1,5})?(/|%2F|\?|#)?.*$ ]]; then
-
-			# Send "typing" status while link is being processed
-			TypingStatus --start-sending
-			# Start processing the link
-			URL="$message_text" && UnicodeDomain=$(echo "$URL" | grep -Eo '[^:/a-zA-Z]{1,}\.[^a-zA-Z/?\d_]{2,}') && Punycode=$(idn2 "$UnicodeDomain") && URL=$(echo "$URL" | sed "s/$UnicodeDomain/$Punycode/g") && ParseTrackingParameters && GetEndResults || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup; }
-
-		# The command "/report" allows users to send messages directly to the bot administrators
-		# This is useful for users who want to report bugs or give feedback
-		# To prevent spam, users cannot submit new reports if a saved report already exists associated with their user ID
-		# The maximum number of characters per message is 4096, and this does not include the text "/report"
+		if [[ "$message_text" =~ .*https?(://|%3A%2F%2F)[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ ]* ]]; then
+			ProcessLinks --normal-links
+		elif [[ "$message_text" =~ .*https?(://|%3A%2F%2F)[^:/a-zA-Z]{1,}\.[^a-zA-Z/?0-9_]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ ]* ]]; then
+			ProcessLinks --idn-links
 		elif [[ "$message_text" =~ ^(\!|/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)$ ]]; then
-
-			# Send  basic command usage information
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\nor\n`!report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`' --parse_mode 'markdown'
-
-			# Check if the commands "/report" and "!report" are followed by one or more character
+			BotCommand_report --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t).+$ ]]; then
-
-			# Check if there is already a saved report with the same user ID
-			if [ -f "$HOME/Unalix/Reports/$message_chat_id" ]; then
-				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "You have previously submitted a report. Wait for it to be viewed by an administrator or delete it using \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown'
-			else
-				# Save the report at "$HOME/Unalix/Reports/$message_chat_id"
-				echo "$message_text" | sed -r 's/^(\!|\/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
-				# Tell all bot administrators that a user has submitted a new report
-				for BotAdministrators in $(cd "$HOME/Unalix/Administrators" && ls)
-				do
-					sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
-				done
-			fi
-
-
-		# The command "cmd" is used to execute commands inside the terminal where Unalix is running
-		# Only administrators who have their user IDs saved in "$HOME/Unalix/Administrators" can use this command inside Telegram
+			BotCommand_report --store-user-report
 		elif [[ "$message_text" =~ ^(\!|/)(C|c)(M|m)(D|d)$ ]]; then
-
-			# Send  basic command usage information
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command> <parameter>`\nor\n`!cmd <command> <parameter>`\n\n*Example:*\n\n`/cmd neofetch --stdout %26%26 echo "$?"`\nor\n`!cmd neofetch --stdout %26%26 echo "$?"`' --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
-
-
-		# Check if the command "/cmd" are followed by a command
+			BotCommand_cmd --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(C|c)(M|m)(D|d).+$ ]]; then
-
-			# Verify if the user is an administrator of the bot
-			if [ -f "$HOME/Unalix/Administrators/$message_chat_id" ]; then
-				# Set the filename for all command outputs
-				CommandOutput="$HOME/Unalix/TempFiles/Output-$(tr -dc 'A-Za-z0-9' < '/dev/urandom' | head -c 10).txt"
-				# Remove the "!cmd" or "/cmd" strings 
-				CommandToRun=$(echo "$message_text" | sed -r 's/^(\!|\/)(C|c)(M|m)(D|d)\s*//g; s/\\*//g; s/"\""/'\''/g')
-				# Run the command in a subshell
-				timeout -s '9' "$ConnectionTimeout" bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"; ExitStatus="$?"
-				# Send the output to the Telegram API
-				[[ "$(cat "$CommandOutput" | wc -w)" != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }
-				# Remove the file with the output and unset variables
-				cleanup
-			else
-				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, and therefore you are not authorized to execute commands through the terminal.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
-			fi
-
-
-		# The command "delete_report" allows users to delete a report that was previously submitted.
+			BotCommand_cmd --run-on-terminal
 		elif [[ "$message_text" =~ ^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)$ ]]; then
-
-			# Send  basic command usage information
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
-
-
-			# Check if the command "delete_report_" are followed by a user ID
+			BotCommand_del_report --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_.{6,}$ ]]; then
-
-			# Remove the strings "/delete_report_" and "!delete_report_" from the variable
-			DeletionRequestID=$(echo "$message_text" | sed -r 's/^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_//g')
-			# Check if the request ID and the the user ID are the same
-			if [ "$DeletionRequestID" = "$message_from_id" ]; then
-				# Check for any reports previously submitted by the user
-				if [ -f "$HOME/Unalix/Reports/$message_from_id" ]; then
-					# Delete the report submitted by the user and send the result to the Telegram API
-					rm -f "$HOME/Unalix/Reports/$message_from_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your report has been successfully deleted.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete your report.'; }
-				else
-					sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have no saved reports.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
-				fi
-
-			# Bot administrators have privileges, so they can delete reports submitted by other users
-			# The check below is basically the same as the previous one, but instead of verifying if the report deletion ID and the user ID that have requested the deletion are the same, it checks if the user ID requesting the deletion is in the list of bot administrators.
-
-			# Check if the used are a valid administrator
-			elif [ -f "$HOME/Unalix/Administrators/$message_from_id" ]; then
-
-				# Check for any reports previously submitted by the specified user ID
-				if [ -f "$HOME/Unalix/Reports/$DeletionRequestID" ]; then
-					# Delete the report and send the result to the Telegram API
-					rm -f "$HOME/Unalix/Reports/$DeletionRequestID" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This report has been successfully deleted.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to delete this report.'; }
-				else
-					sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "There are no reports associated with this user ID (\`$DeletionRequestID\`)." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
-				fi
-			else
-				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have attempted to delete a report that does not belong to your user ID. Only bot administrators can perform this action.' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
-			fi
+			BotCommand_del_report --delete-user-report
 		else
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https://`.' --parse_mode 'markdown' 2>/dev/null || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; }
 		fi
