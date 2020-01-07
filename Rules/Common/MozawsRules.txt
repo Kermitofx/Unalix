@@ -1,1 +1,1 @@
-Redirection=https?:\/\/[^\/]+\/v1\/[0-9a-f]{64}\/(.*)
+Redirection=https?:\/\/[^\/]+\/v1\/[0-9a-f]{64}\/(https?(:|%3A|%3a)\/\/[^&]*)

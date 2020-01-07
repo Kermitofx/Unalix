@@ -1,1 +1,1 @@
-Redirection=.*gate\.sc.*\/.*url\=([^&]*)
+Redirection=.*gate\.sc.*\/.*url\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)

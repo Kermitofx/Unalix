@@ -1,1 +1,1 @@
-Redirection=.*deviantart\.com.*outgoing\?(.*)
+Redirection=.*deviantart\.com.*outgoing\?(https?[^&]*)

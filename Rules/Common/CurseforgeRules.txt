@@ -1,1 +1,1 @@
-Redirection=.*curseforge\.com\/linkout\?remoteUrl\=([^&]*)
+Redirection=.*curseforge\.com\/linkout\?remoteUrl\=(https?[^&]*)

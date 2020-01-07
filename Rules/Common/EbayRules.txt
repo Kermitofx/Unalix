@@ -1,4 +1,4 @@
-Redirection=.*rover\.ebay\.\w{2,}\/rover.*mpre\=([^&]*)
+Redirection=.*rover\.ebay\.\w{2,}\/rover.*mpre\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
 _trkparms\=[^&]*
 _trksid\=[^&]*
 _from\=[^&]*

@@ -1,6 +1,6 @@
-Redirection=.*l[a-zA-Z]?\.facebook\..*\/.*l\.php\?.*u\=(https?:\/\/[^&]*)
+Redirection=.*l[a-zA-Z]?\.facebook\..*\/.*l\.php\?.*u\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
 # The rule below were added by Unalix
-Redirection=.*facebook..*\/\?next\=(https?[^&]*)
+Redirection=.*facebook..*\/.*\?next\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
 hc_[a-zA-Z_%\[\]0-9]*\=[^&]*
 [a-zA-Z]*ref[a-zA-Z]*\=[^&]*
 __tn__\=[^&]*
@@ -20,3 +20,5 @@ fbid\=[^&]*
 # The rules below were added by Unalix
 h\=[^&]*
 login_source\=[^&]*
+_ft_\=[^&]*
+_rdr[^&]*

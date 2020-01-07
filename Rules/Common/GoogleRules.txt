@@ -1,8 +1,8 @@
-Redirection=.*google\..*\/.*url\?.*url\=(https?[^&]*)
-Redirection=.*google\..*\/.*url\?.*q\=(https?[^&]*)
+Redirection=.*google\..*\/.*url\?.*url\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
+Redirection=.*google\..*\/.*url\?.*q\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
 Redirection=.*google\..*\/.*adurl\=([^&]*)
 # The rule below were added by Unalix
-Redirection=.*google\.\w{2,}\/amp\/s\/(.*[^&]*)
+Redirection=.*google\.\w{2,}\/amp\/s\/([^&]*)
 ved\=[^&]*
 bi[a-zA-Z]*\=[^&]*
 gfe_[a-zA-Z]*\=[^&]*

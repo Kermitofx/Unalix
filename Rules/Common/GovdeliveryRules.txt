@@ -1,1 +1,1 @@
-Redirection=.*links\.govdelivery\.com.*\/track\?.*(https?\/\/.*)
+Redirection=.*links\.govdelivery\.com.*\/track\?.*(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)

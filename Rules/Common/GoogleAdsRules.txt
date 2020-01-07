@@ -1,1 +1,1 @@
-Redirection=.*googleadservices\..*\/.*adurl\=([^&]*)
+Redirection=.*googleadservices\..*\/.*adurl\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)

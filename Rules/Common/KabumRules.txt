@@ -1,0 +1,2 @@
+# The rules below were added by Unalix
+zanpid\=[^&]*

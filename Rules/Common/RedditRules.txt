@@ -1,1 +1,1 @@
-Redirection=.*out\.reddit\.\w{2,}\/.*url\=([^&]*)
+Redirection=.*out\.reddit\.\w{2,}\/.*url\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)

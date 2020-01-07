@@ -1,4 +1,4 @@
-Redirection=.*star\.aliexpress\.com\/share\/share.*\?rdtUrl\=(https?:\/\/[^&]+)
+Redirection=.*star\.aliexpress\.com\/share\/share.*\?rdtUrl\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
 ws_ab_test\=[^&]*
 btsid\=[^&]*
 algo_expid\=[^&]*
@@ -21,5 +21,5 @@ terminal_id\=[^&]*
 (aff_)?trace(_key)?\=[^&]*
 tt\=[^&]*
 sk\=[^&]*
-# The rules below were added by Unalix
 s\=[^&]*
+spreadType\=[^&]*

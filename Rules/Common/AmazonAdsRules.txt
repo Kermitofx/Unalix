@@ -1,1 +1,1 @@
-.*amazon-adsystem\..*\/x\/c\/.+?\/([^&]+)
+.*amazon-adsystem\..*\/x\/c\/.+?\/(https?[^&]*)

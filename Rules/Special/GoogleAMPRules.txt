@@ -1,3 +1,4 @@
 # The rule below were added by Unalix
+s/.*google\..*\/amp\/s\//http:\/\//g
 s/\/amp\//\//g
 s/(\?|&)amp\b/\1/g

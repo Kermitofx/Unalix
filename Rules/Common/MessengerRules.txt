@@ -1,1 +1,1 @@
-Redirection=.*l\.messenger\.com\/l\.php\?u\=([^&]*)
+Redirection=.*l\.messenger\.com\/l\.php\?u\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
