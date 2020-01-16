@@ -1,4 +1,4 @@
-utm_[a-zA-Z]*\=[^&]*
+utm_[A-Za-z]*\=?[^&]*
 ga_source\=[^&]*
 ga_medium\=[^&]*
 ga_term\=[^&]*
@@ -33,3 +33,5 @@ opn\=[^&]*
 mktportal\=[^&]*
 gclsrc\=[^&]*
 _*twitter_impression\=[^&]*
+partner\=[^&]*
+cm_mmc\=[^&]*

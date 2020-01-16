@@ -1,0 +1,6 @@
+# The rules below were added by Unalix
+matt_\w*\=[^&]*
+reco_\w*\=[^&]*
+\bc_\w*\=[^&]*
+no(I|i)ndex\=[^&]*
+contextual\=[^&]*

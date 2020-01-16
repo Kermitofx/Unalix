@@ -10,15 +10,19 @@ In addition to removing tracking fields from user-submitted URLs, Unalix also tr
 
 ### Why would this be useful to me?
 
+#### Privacy
+
 It is quite common to share links within Telegram, whether they are conversations with other users or within groups. Most people don't check links before sending them, they just copy and paste. This is the biggest problem.
 
 Links we share may contain tracking parameters related to services such as [Google Analytics](http://en.wikipedia.org/wiki/Google_Analytics) or [Google Ads](http://en.wikipedia.org/wiki/Google_Ads). The sole purpose of these parameters is to track and collect information about our online browsing.
 
 By sharing links like these, we are not only compromising our privacy, but we are also compromising the privacy of users who click on the link sent by us. To avoid this, it is always necessary to check a link before sending them. We must analyze and remove the tracking parameters present in it.
 
+#### It is simple and fast
+
 Analyzing and removing tracking parameters can be a very difficult and complicated task. Depending on the size of the link and/or the number of characters in it, it is not clear which fields are being used for online tracking purposes and which are not.
 
-Unalix has a list of [specific rules](http://github.com/SnwMds/Unalix/tree/master/Rules) that aims to remove these tracking parameters. They can remove all tracking fields without breaking the link. It is simple and fast.
+Unalix has a list of [specific rules](http://github.com/SnwMds/Unalix/tree/master/Rules) that aims to remove these tracking parameters. They can remove all tracking fields without breaking the link.
 
 ### How to use?
 
@@ -28,12 +32,12 @@ From there, send via a message or inside a txt file the links you want to be "cl
 
 In order to be able to identify the links contained in the message or txt file, they must be in the following format:
 
-* It must start with `http://` or `https://`
+* It must start with `http://` or `https://` (case-insensitive)
 * It must have a domain name in Latin (`example.org`) or non-Latin (`президент.рф`) alphabet. Links with emoji domain name (`i❤️.ws`) are also supported.
-  
+
 ![Testing the bot with a link from an Amazon product.](Documentation/images/Example.png) 
 
-If you want Unalix to process multiple links from a single message or txt file, separate them by a whitespace character (`\s`) or a new line (`\n`).
+If you want Unalix to process multiple links from a single message or txt file, separate them by a whitespace character (`\s`), tab (`\t`) or a new line (`\n`).
 
 _**Note**: If you submit more than 1 link, the results will be sent in a txt file._
 
@@ -58,14 +62,14 @@ Unalix has some limitations related to link processing, see them below:
 
 - Unalix will not be able to send the results in a txt file if the final file size exceeds 50 MB
    - This is another limitation of the Telegram API. See the [sendDocument](https://core.telegram.org/bots/api#senddocument) method for more info.
-   - If the size limit is exceeded, the file size will be shortened to 52428800 bytes (50 MB). This will cause some results to be lost.
+   - If the size limit is exceeded, the file size will be shortened to 50000000 bytes (47 MB, in binary). This will cause some results to be lost.
 
 ### Getting direct links from URL shorteners
 
 - Unalix only follows the URLs/paths provided by the ["location" header](http://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Location)
    - It means that Unalix cannot obtain direct links from URL shorteners that require user interaction (example: clicking a button or resolving CAPTCHA) to redirect or that uses JavaScript code to redirect.
 
-- Blocked requests
+- Requests may get blocked
    - To ensure greater privacy, all Unalix network traffic goes through the Tor network. As a result, sites that uses [Cloudflare](http://cloudflare.com) or other protection services may eventually block the acess of Unalix to the server, which prevents the bot from obtaining the direct link from the shortened URL
  
 ## For developers
@@ -106,10 +110,10 @@ On Android, install all required packages through Termux with `pkg`:
 
 ```
 $ pkg update -y
-$ pkg install -y 'curl' 'jq' 'vim'
+$ pkg install -y 'curl' 'jq' 'vim' 'libidn2'
 ```
 
-_Note that the package `idn` is not available on Termux's repositories and the `idn2` package comes preinstalled on Termux._
+_Note that the package `idn` is not available on Termux's repositories._
 
 ### Get the source
 

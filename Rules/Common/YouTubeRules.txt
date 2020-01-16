@@ -2,3 +2,6 @@ Redirection=.*youtube\..*\/redirect\?.*q\=([^&]*)
 feature\=[^&]*
 gclid\=[^&]*
 kw\=[^&]*
+# The rules below were added by Unalix
+has_verified\=[^&]*
+bpctr\=[^&]*
