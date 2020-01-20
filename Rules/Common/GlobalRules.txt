@@ -35,3 +35,6 @@ gclsrc\=[^&]*
 _*twitter_impression\=[^&]*
 partner\=[^&]*
 cm_mmc\=[^&]*
+epar\=[^&]*
+hl\=[^&]*
+s_term\=[^&]*

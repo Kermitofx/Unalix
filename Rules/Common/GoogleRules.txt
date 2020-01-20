@@ -3,7 +3,7 @@ Redirection=.*google\..*\/.*url\?.*q\=(https?(:\/\/|%3A%2F%2F|%3a%2f%2f)[^&]*)
 Redirection=.*google\..*\/.*adurl\=([^&]*)
 # The redirection rules below were added by Unalix
 Redirection=.*google\.\w{2,}\/amp\/s\/([^&]*)
-Redirection=.*google\.\w{2,}\/img.*\?imgurl\=([^&]*).*
+Redirection=.*google\.\w{2,}\/img.*\?imgurl\=([^&]*)
 ved\=[^&]*
 bi[a-zA-Z]*\=[^&]*
 gfe_[a-zA-Z]*\=[^&]*

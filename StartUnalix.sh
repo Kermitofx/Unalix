@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# The network requests function. This will be used to find the direct link of shortened URLs
+# The network requests function. This will be used to get the direct link of shortened URLs
 MakeNetworkRequest(){
 
 	# If curl cannot access the link for any reason, the value of the "$URL" variable will be considered the "final URL"
 	echo "$URL" > "$TrashURLFilename"
 	# Make request
-	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$URL" --user-agent "$UserAgent" $DoHOptions | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | grep -Eo "\bhttps?(://|%3A%2F%2F|%3a%2f%2f).{1,}\..{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ $(printf '\n')$(printf '\t')]*\b" >> "$TrashURLFilename"
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$URL" --user-agent "$UserAgent" $DoHOptions | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | ParseText >> "$TrashURLFilename"
 	# If the URL does not have a valid protocol, set it to http
 	sed -ri 's/^(https?(:\/\/|%3A%2F%2F|%3a%2f%2f))?/http:\/\//g' "$TrashURLFilename"
 	# Set received data
-	URL=$(grep -Eo "\bhttps?(://|%3A%2F%2F|%3a%2f%2f).{1,}\..{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ $(printf '\n')$(printf '\t')]*\b" "$TrashURLFilename" | tail -1 | sed -r 's/\s*//g') #; echo "$URL" > "$TrashURLFilename"
+	URL=$(ParseText < "$TrashURLFilename" | tail -1)
 
 }
 
@@ -27,10 +27,10 @@ SetupUnalix(){
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
 	source "$HOME/Unalix/Settings/Settings.txt" || { echo '* An error occurred while trying to import the settings file!'; exit; }
 	
-	# Check if $BotToken is a valid value
+	# Check if "$BotToken" is a valid value
 	[[ "$BotToken" =~ [0-9]+:[A-Za-z0-9_-]+ ]] || { echo '* "$BotToken" contains a invalid value. Unalix cannot be started!'; exit; }
 	
-	# Check if $DoH is a valid value'
+	# Check if "$DoH" is a valid value'
 	if [[ "$DoH" =~ https://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:443)?(/[a-zA-Z0-9._-]*)? ]]; then
 		# If Tor traffic is enabled, disable DNS-over-HTTPS
 		if [ "$TorTraffic" = 'true' ]; then
@@ -55,15 +55,11 @@ SetupUnalix(){
 	# Check if the package "idn" is installed
 	if [[ "$(idn 'i❤️.ws')" != 'xn--i-7iq.ws' ]]; then
 		echo '* The "idn" package is not installed, inaccessible or has limitations!'
-	else
-		IDNAvailable='true'
 	fi
 	
 	# Check if the package "idn2" is installed
 	if [[ "$(idn2 'президент.рф')" != 'xn--d1abbgf6aiiy.xn--p1ai' ]]; then
 		echo '* The "idn2" package is not installed, inaccessible or has limitations!'
-	else
-		IDNAvailable='true'
 	fi
 	
 	# Check if the package "bash" is installed
@@ -86,29 +82,38 @@ SetupUnalix(){
 		echo '* The "vim" package is not installed, inaccessible or has limitations!'; exit '1'
 	fi
 	
+	# Check if the package "xmlstarlet" is installed
+	if [[ "$(echo '&amp;' | xmlstarlet -q 'unesc')" != '&' ]]; then
+		echo '* The "xmlstarlet" package is not installed, inaccessible or has limitations!'; exit '1'
+	fi
+	
+	# Set default permissions
+	chmod -R '700' "$HOME/Unalix"
+	
 	return '0'
+
 }
 
 # Remove trackings parameters using regex patterns stored in the "$EndRegex" file
 RemoveTrackingParameters(){
 
 	# Parse "redirection" rules
-	for RegexRules in $(cat "$EndRegex" | grep -E '^Redirection\=' | sed -r '/^#.*|^$/d; s/^Redirection\=//g')
+	for RegexRules in $(grep -E '^Redirection\=' "$EndRegex" | sed -r '/^#.*|^$/d; s/^Redirection\=//g')
 	do
-		URL=$(echo "$URL" | sed -r "s/$RegexRules/\1/g")
+		URL=$(echo "$URL" | sed -r "s/$RegexRules.*/\1/g")
 	done
 
 	# The "redirect" URL needs to be decoded, since it may contain encoded characters
 	URL=$(URLDecode "$URL")
 
 	# Remove specific fields
-	for RegexRules in $(cat "$EndRegex" | sed -r '/^Redirection\=/d; /^#.*|^$/d')
+	for RegexRules in $(sed -r '/^Redirection\=/d; /^#.*|^$/d' < "$EndRegex")
 	do
-		URL=$(echo "$URL"| sed -r "s/$RegexRules//g")
+		URL=$(echo "$URL"| sed -r "s/\b$RegexRules//g")
 	done
 
 	# Parse "special" rules
-	for SpecialRegexRules in $(cat "$SpecialEndRegex" | sed -r '/^#.*|^$/d')
+	for SpecialRegexRules in $(sed -r '/^#.*|^$/d' < "$SpecialEndRegex")
 	do
 		URL=$(echo "$URL" | sed -r "$SpecialRegexRules")
 	done
@@ -198,14 +203,15 @@ DetectPatterns(){
 # Set filename variables
 SetFilenameVariables(){
 
-	rm -f "$OriginalLinksFilename" "$EndResults" "$EndResults2" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename"
+	rm -f "$OriginalLinksFilename" "$EndResults" "$EndResults2" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
 	OriginalLinksFilename="$HOME/Unalix/TempFiles/OriginalLinks-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	EndResults="$HOME/Unalix/TempFiles/EndResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	EndResults2="$HOME/Unalix/TempFiles/CleanedURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	EndResults2="$HOME/Unalix/TempFiles/EndResults2-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	EndRegex="$HOME/Unalix/TempFiles/Regex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	EndRegex="$HOME/Unalix/TempFiles/EndRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	LinksFilename="$HOME/Unalix/TempFiles/Links-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	GetFromURLsFilename="$HOME/Unalix/TempFiles/GetFromURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 
 }
 
@@ -216,7 +222,7 @@ ParseTrackingParameters(){
 
 	DetectPatterns; SolveURLIssues; RemoveTrackingParameters
 
-	GenerateUserAgent; MakeNetworkRequest
+	MakeNetworkRequest
 
 	URL=$(URLDecode "$URL")
 
@@ -228,7 +234,7 @@ ParseTrackingParameters(){
 GetEndResults(){
 
 	if [ "$BatchMode" != 'true' ]; then
-		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus --stop-sending && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
+		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus --stop-sending && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' --disable_web_page_preview 'true' || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
 	else
 		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && URL=$(echo "$URL" | sed 's/\//\\\//g; s/&/\\&/g') && sed -ri "s/\s\(\*\)$/ > $URL/g" "$EndResults" || { sed -ri "s/\s\(\*\)$/ > Could not process this link/g" "$EndResults"; }
 	fi
@@ -252,14 +258,15 @@ MakeURLCompatible(){
 cleanup(){
 
 	TypingStatus --stop-sending
-	rm -rf "$EndRegex" "$TrashURLFilename" "$SpecialEndRegex" "$CommandOutput" "$MessageSent" "$LinksFilename" "$OriginalLinksFilename" "$EndResults" "$EndResults2"
+	rm -f "$OriginalLinksFilename" "$EndResults" "$EndResults2" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
 	exit '0'
 
 }
 
-# This function is used to randomly generate valid user agents. Each request made via wget uses a different user agent
-# This is used to prevent websites accessed from tracing the access history and possibly blocking Unalix due to "suspicious traffic"
-# Client versions are randomly generated, however operating system information is valid
+# The "GenerateUserAgent" function is used to randomly generate valid user agents. Each request made via curl uses a different user agent.
+# This is used to prevent websites accessed from tracing the access history and possibly blocking Unalix due to "suspicious traffic".
+
+# Client versions are randomly generated, however operating system information is valid.
 # Note that the purpose of this function is not to generate real user agents, but to generate user agents in valid format. That's enough to "trick" most websites.
 # To make access even more "random" and secure, run Unalix over the Tor network and change your IP address (get a new identity) regularly (e.g: within 15 or 30 minutes).
 GenerateUserAgent(){
@@ -293,9 +300,10 @@ GenerateUserAgent(){
 	# 3 = Android
 	# 4 = iOS
 
-	# Generate a random number between 0 and 4
+	# Generate a random number between 0 and 4 (pick a browser)
 	BrowserSelection=$(tr -dc '0-4' < '/dev/urandom' | head -c '1')
 
+	# Generate a random user agent based on the number contained in the "$BrowserSelection" variable
 	if [ "$BrowserSelection" = '0' ]; then
 		GenerateFirefox
 	elif [ "$BrowserSelection" = '1' ]; then
@@ -309,12 +317,13 @@ GenerateUserAgent(){
 	else
 		UserAgent='Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
 	fi
+
 }
 
 # Template: http://whatismybrowser.com/guides/the-latest-user-agent/chrome
 GenerateChrome(){
 
-	# Generate a random number between 0 and 4
+	# Generate a random number between 0 and 4 (pick a operating system)
  	SystemSelection=$(tr -dc '0-4' < '/dev/urandom' | head -c '1')
 
 	# Chrome on Windows
@@ -336,12 +345,13 @@ GenerateChrome(){
 		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Chrome on Linux)
 		UserAgent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'
 	fi
+
 }
 
 # Template: http://whatismybrowser.com/guides/the-latest-user-agent/firefox
 GenerateFirefox(){
 
-	# Generate a random number between 0 and 4
+	# Generate a random number between 0 and 4 (pick a operating system)
 	SystemSelection=$(tr -dc '0-4' < '/dev/urandom' | head -c '1')
 
 	# Firefox on Windows
@@ -363,12 +373,13 @@ GenerateFirefox(){
 		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Firefox on Linux)
 		UserAgent='Mozilla/5.0 (X11; Linux i586; rv:31.0) Gecko/20100101 Firefox/71.0'
 	fi
+
 }
 
 # Template: http://whatismybrowser.com/guides/the-latest-user-agent/opera
 GenerateOpera(){
 
-	# Generate a random number between 0 and 3
+	# Generate a random number between 0 and 3 (pick a operating system)
 	SystemSelection=$(tr -dc '0-3' < '/dev/urandom' | head -c '1')
 
 	# Opera on Windows
@@ -387,12 +398,13 @@ GenerateOpera(){
 		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Opera on Linux)
 		UserAgent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36 OPR/65.0.3467.72'
 	fi
+
 }
 
 # Template http://whatismybrowser.com/guides/the-latest-user-agent/vivaldi
 GenerateVivaldi(){
 
-	# Generate a random number between 0 and 3
+	# Generate a random number between 0 and 3 (pick a operating system)
 	SystemSelection=$(tr -dc '0-3' < '/dev/urandom' | head -c '1')
 
 	# Vivaldi on Windows
@@ -411,12 +423,13 @@ GenerateVivaldi(){
 		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Vivaldi on Linux)
 		UserAgent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36 Vivaldi/2.9'
 	fi
+
 }
 
 # Template http://whatismybrowser.com/guides/the-latest-user-agent/yandex
 GenerateYandex(){
 
-	# Generate a random number between 0 to 1 and between 3 to 4 
+	# Generate a random number between 0 to 1 and between 3 to 4 (pick a operating system)
 	SystemSelection=$(tr -dc '0-13-4' < '/dev/urandom' | head -c '1')
 
 	# Yandex on Windows
@@ -435,6 +448,7 @@ GenerateYandex(){
 		# If for some reason the "SystemSelection" variable returns an invalid value, set a predefined user agent (Yandex on macOS)
 		UserAgent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 YaBrowser/19.6.0.1583 Yowser/2.5 Safari/537.36'
 	fi
+
 }
 
 # Try to solve character decoding issues
@@ -489,16 +503,16 @@ BotCommand_report(){
 
 	# Send basic command usage information
 	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\nor\n`!report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`' --parse_mode 'markdown' || { SendErrorMessage; }
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\nor\n`!report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\n\n*Description:*\n\nUse this command to send a direct message to bot administrators. If you prefer, enter your email or username so that we can contact you if necessary.' --parse_mode 'markdown' || { SendErrorMessage; }
 	# Try to store the submitted report
 	elif [ "$1" = '--store-user-report' ]; then
 		if [ -f "$HOME/Unalix/Reports/$message_chat_id" ]; then
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "You have previously submitted a report. Wait for it to be viewed by an administrator or delete it using \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown'
 		else
-			echo "$message_text" | sed -r 's/^(\!|\/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
+			echo -e "$message_text" | sed -r 's/^(\!|\/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
 			for Administrators in $(cd "$HOME/Unalix/Administrators" && ls)
 			do
-				sendMessage --chat_id "$Administrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
+				sendMessage --chat_id "$Administrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id" | head -c '3800')\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
 			done
 		fi
 	else
@@ -513,14 +527,14 @@ BotCommand_cmd(){
 
 	# Send basic command usage information
 	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command> <parameter>`\nor\n`!cmd <command> <parameter>`\n\n*Example:*\n\n`/cmd neofetch --stdout %26%26 echo "$?"`\nor\n`!cmd neofetch --stdout %26%26 echo "$?"`' --parse_mode 'markdown' || { SendErrorMessage; }
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command> <parameter>`\nor\n`!cmd <command> <parameter>`\n\n*Example:*\n\n`/cmd neofetch --stdout %26%26 echo "$?"`\nor\n`!cmd neofetch --stdout %26%26 echo "$?"`\n\n*Description:*\n\nThis command allows a user to execute bash commands inside the terminal on which Unalix is running. Only administrators are authorized to perform this operation.' --parse_mode 'markdown' || { SendErrorMessage; }
 	# Try to run the command on terminal
 	elif [ "$1" = '--run-on-terminal' ]; then
 		if [ -f "$HOME/Unalix/Administrators/$message_chat_id" ]; then
 			CommandOutput="$HOME/Unalix/TempFiles/Output-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 			CommandToRun=$(echo "$message_text" | sed -r 's/^(\!|\/)(C|c)(M|m)(D|d)\s*//g; s/\\*//g; s/"\""/'\''/g')
 			timeout -s '9' "$ConnectionTimeout" bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"; ExitStatus="$?"
-			[[ "$(cat "$CommandOutput" | wc -w)" != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }
+			[[ $(wc -w < "$CommandOutput") != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }
 			cleanup
 		else
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, and therefore you are not authorized to execute commands through the terminal.' || { SendErrorMessage; }
@@ -537,7 +551,7 @@ BotCommand_del_report(){
 
 	# Send basic command usage information
 	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_<your_user_id>\`\nor\n\`!delete_report_<your_user_id>\`\n\n*Example:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`" --parse_mode 'markdown' || { SendErrorMessage; }
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_<your_user_id>\`\nor\n\`!delete_report_<your_user_id>\`\n\n*Example:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`\n\n*Description:*\n\nThis command allows a user to delete a previously sent report. Common users cannot delete reports with an ID other than their own." --parse_mode 'markdown' || { SendErrorMessage; }
 	# Try to delete the report
 	elif [ "$1" = '--delete-user-report' ]; then
 		DeletionRequestID=$(echo "$message_text" | sed -r 's/^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_//g')
@@ -565,26 +579,32 @@ BotCommand_del_report(){
 # Process links sent by users
 ProcessLinks(){
 
-	if [ "$GetFromFile" = 'true' ]; then
+	if [ "$GetFromURL" = 'true' ]; then
+		echo -e "$message_text" | ParseText > "$GetFromURLsFilename"
+		for Links in $(cat "$GetFromURLsFilename")
+		do
+			GetLinksContent | head -c '5242880' | ParseText >> "$LinksFilename"
+		done
+		rm -f "$GetFromURLsFilename" && unset 'GetFromURL'
+	elif [ "$GetFromFile" = 'true' ]; then
 		if [ "$message_document_file_size" -gt '20000000' ]; then
 			unset 'GetFromFile'
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This file exceeds the maximum limit of 20 MB. Try sending a smaller file.' || { SendErrorMessage; }; cleanup
 		else
 			DownloadFilePath=$(getFile --file_id "$message_document_file_id" | grep -Eo 'documents/.+')
-			DownloadFile | grep -Eo "\b(H|h)(T|t)(T|t)(P|p)(S|s)?(://|%3A%2F%2F|%3a%2f%2f).{1,}\..{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ $(printf '\n')$(printf '\t')]*\b" | sed -r 's/(H|h)(T|t)(T|t)(P|p)(S|s)?(:\/\/|%3A%2F%2F)/http\6/g' | awk 'NF && !seen[$0]++' > "$LinksFilename" || { SendErrorMessage; }
+			DownloadFile | ParseText > "$LinksFilename" || { SendErrorMessage; }
 		fi
 	else
-		echo -e "$message_text" | sed -r 's/(H|h)(T|t)(T|t)(P|p)(S|s)?(:\/\/|%3A%2F%2F)/http\6/g' | grep -Eo "\bhttps?(://|%3A%2F%2F).{1,}\..{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ $(printf '\n')$(printf '\t')]*\b" | awk 'NF && !seen[$0]++' > "$LinksFilename"
+		echo -e "$message_text" | ParseText > "$LinksFilename"
 	fi
 
-	if [[ $(cat "$LinksFilename" | wc -l) -gt '1' ]]; then
+	if [[ $(wc -l < "$LinksFilename") -gt '1' ]]; then
 
 		TypingStatus --start-sending && BatchMode='true'
 		mv "$LinksFilename" "$OriginalLinksFilename" && rm -f "$LinksFilename" || { SendErrorMessage; }
 
-		for Domain in $(cat "$OriginalLinksFilename" | sed -r 's/^https?:\/\/|(\/|%2F|\?|#).*$//g')
+		for Domain in $(GetDomainName < "$OriginalLinksFilename")
 		do
-			[ "$IDNAvailable" != 'true' ] && Domain=$(echo "$Domain" | tr '[:upper:]' '[:lower:]')
 			idn "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn "$Domain")
 			idn2 "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn2 "$Domain")
 			if [ "$Punycode" ]; then
@@ -598,17 +618,16 @@ ProcessLinks(){
 			ParseTrackingParameters && GetEndResults
 		done
 
-		cat "$EndResults" | head -c '50000000' > "$EndResults2"
+		head -c '50000000' < "$EndResults" > "$EndResults2"
 		TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$EndResults2" || { SendErrorMessage; }; cleanup
 
 	else
-		URL=$(cat "$LinksFilename" | grep -Eo "\bhttps?(://|%3A%2F%2F).{1,}\..{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ $(printf '\n')$(printf '\t')]*\b" | head -n '1')
+		URL=$(cat "$LinksFilename" | ParseText | head -n '1')
 		rm -f "$OriginalLinksFilename" "$LinksFilename"
 			
 		TypingStatus --start-sending
 	
-		Domain=$(echo "$URL" | sed -r 's/^https?:\/\/|(\/|%2F|\?|#).*$//g' | head -n '1')
-		[ "$IDNAvailable" != 'true' ] && Domain=$(echo "$Domain" | tr '[:upper:]' '[:lower:]')
+		Domain=$(echo "$URL" | GetDomainName)
 		idn "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn "$Domain")
 		idn2 "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn2 "$Domain")
 	
@@ -665,6 +684,28 @@ URLEncode(){
 
 }
 
+
+# This function is used to obtain the contents of the URLs sent using the command "/getfromurl"
+GetLinksContent(){
+
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$Links" --user-agent "$UserAgent" $DoHOptions
+
+}
+
+# This function is used to process the text of messages, txt files and web pages (obtain valid values).
+ParseText(){
+
+	xmlstarlet -q 'unesc' | sed -r 's/(\s|\t|"|\(|\)|<|>|,)+/\n/g; s/(H|h)(T|t)(T|t)(P|p)(S|s)?(:\/\/|%3A%2F%2F|%3a%2f%2f)/http\6/g' | grep -Eo "\bhttps?(://|%3A%2F%2F|%3a%2f%2f)[^\ $(printf '\n')$(printf '\t')\"()<>,]*" | sed -r '/.{1,}\..{2,}(:[0-9]{1,5})?(\/|%2F|\?|#)?/!d' | awk 'NF && !seen[$0]++'
+
+}
+
+# This function is used to obtain the domain names of the links sent by users.
+GetDomainName(){
+
+	sed -r 's/^https?:\/\/|(\/|%2F|\?|#).*$//g' | tr '[:upper:]' '[:lower:]'
+
+}
+
 # Initial setup
 SetupUnalix
 
@@ -681,7 +722,7 @@ echo '- Checking access to the API...' && timeout -s '9' "$ConnectionTimeout" cu
 echo '- Importing functions...' && source "$HOME/Unalix/Dependencies/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; exit; }
 
 # Start the bot
-echo '- Starting bot...' && init --token "$BotToken" 1>/dev/null
+echo '- Starting bot...' && init --token "$BotToken" 1>/dev/null; echo '- Success!'
 
 # Send "Unalix is up" to "$StatusChatID"
 echo '- Trying to send bot status to the chat...' && SendBotStatus --started && echo '- Success!'
@@ -690,6 +731,7 @@ echo '- Trying to send bot status to the chat...' && SendBotStatus --started && 
 trap "echo '- Trying to send bot status to the chat...' && SendBotStatus --stopped && echo '- Success!' ; cleanup" 'INT' 'TERM'
 
 echo '- Getting updates from the API...'
+
 while true; do
 
 	# Generate (or not) a random user agent before each request
@@ -701,11 +743,11 @@ while true; do
 	# List received data
 	for id in "$(ListUpdates)"; do
 
-		# Check if the text sent is part of a file (e.g: photo, video, document)
+		# Check if the text sent is part of a file (e.g: photo, video or document)
 		[ ! "$message_text" ] && message_text="$message_caption"
 
 		if [[ "$message_text" =~ ^(\!|/)(S|s)(T|t)(A|a)(R|r)(T|t)$ ]]; then
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send via a message or inside a txt file the links you want to be "clean". Unalix will begin processing your request and within a few seconds (or minutes, depending on the number of links), it will send you the final result.\n\nIn order to be able to identify the links contained in the message or txt file, they must be in the following format:\n\n• It must start with `http://` or `https://` (case-insensitive)\n• It must have a domain name in Latin (`example.org`) or non-Latin (`президент.рф`) alphabet. Links with emoji domain name (`i❤️.ws`) are also supported.\n\n[Testing the bot with a link from an Amazon product](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example.png)\n\nIf you want Unalix to process multiple links from a single message or txt file, separate them by a whitespace character (`\s`), tab (`\\t`) or a new line (`\\n`).\n\n_Note: If you submit more than 1 link, the results will be sent in a txt file._\n\n[Testing the bot with multiple links in a single message](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example2.png)\n\nNote that Unalix can also identify links in forwarded messages and file captions.\n\nFor more information about Unalix, take a look at our [GitHub repository](http://github.com/SnwMds/Unalix) (Yes, it'\''s fully open source!).' --parse_mode 'markdown' --disable_web_page_preview 'true' || { SendErrorMessage; }; cleanup
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send via a message or inside a txt file the links you want to be "clean". Unalix will begin processing your request and within a few seconds (or minutes, depending on the number of links), it will send you the final result.\n\nUnalix is also able to process links from web pages. To do this, submit the URLs using the `/getfromurl` command. Unalix will download the entire contents of these URLs, obtain all the `http`/`https` links and process them in a batch operation.\n\nIn order to be able to identify the links contained in the message, txt file or web page, they must be in the following format:\n\n• It must start with `http://` or `https://` (case-insensitive)\n• It must have a domain name in Latin (`example.org`) or non-Latin (`президент.рф`) alphabet. Links with emoji domain name (`i❤️.ws`) are also supported.\n\n[Testing the bot with a link from an Amazon product](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example.png)\n\nIf you want Unalix to process multiple links from a single message, txt file or web page, separate them by a whitespace character (`\s`), tab (`\\t`), comma (`,`) or a new line (`\\n`).\n\n_Note: If you submit more than 1 link, the results will be sent in a txt file._\n\n[Testing the bot with multiple links in a single message](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example2.png)\n\nNote that Unalix can also identify links in forwarded messages and file captions.\n\nFor more information about Unalix, take a look at our [GitHub repository](http://github.com/SnwMds/Unalix) (Yes, it'\''s fully open source!).' --parse_mode 'markdown' --disable_web_page_preview 'true' || { SendErrorMessage; }; cleanup
 		elif [[ "$message_text" =~ ^(\!|/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)$ ]]; then
 			BotCommand_report --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t).+$ ]]; then
@@ -720,10 +762,14 @@ while true; do
 			BotCommand_del_report --delete-user-report
 		elif [ "$message_document_mime_type" = 'text/plain' ]; then
 			GetFromFile='true' && SetFilenameVariables && ProcessLinks
-		elif [[ "$message_text" =~ .*(H|h)(T|t)(T|t)(P|p)(S|s)?(://|%3A%2F%2F|%3a%2f%2f).{1,}\..{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?[^\ $(printf '\n')$(printf '\t')]* ]]; then
+		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L)$ ]]; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/getfromurl <url_here>`\nor\n`!getfromurl <url_here>`\n\n*Example:*\n\n`/getfromurl http://example.org/links.txt,http://example.com/urls.html`\nor\n`!getfromurl http://example.org/links.txt,http://example.com/urls.html`\n\n*Description:*\n\nUnalix will obtain all http/https links contained in the URLs and process them in a batch operation.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L).+$ ]]; then
+			GetFromURL='true' && SetFilenameVariables && ProcessLinks
+		elif [[ "$message_text" =~ .*(H|h)(T|t)(T|t)(P|p)(S|s)?(://|%3A%2F%2F|%3a%2f%2f)[^\ $(printf '\n')$(printf '\t')\"]* ]]; then
 			SetFilenameVariables && ProcessLinks
 		elif [ "$message_text" ]; then
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https:// (case-insensitive)`.' --parse_mode 'markdown' || { SendErrorMessage; }; cleanup
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https:// (case-insensitive)`.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 		else
 			exit '0'
 		fi
