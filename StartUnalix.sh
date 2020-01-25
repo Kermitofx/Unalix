@@ -25,10 +25,10 @@ SetupUnalix(){
 	[ -d "$HOME/Unalix/Reports" ] || { mkdir -p "$HOME/Unalix/Reports"; }
 	
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
-	source "$HOME/Unalix/Settings/Settings.txt" || { echo '* An error occurred while trying to import the settings file!'; exit; }
-	
+	source "$HOME/Unalix/Settings/Settings.txt" || { echo -e '\033[0;31mAn error occurred while trying to import the settings file!'; exit; }
+
 	# Check if "$BotToken" is a valid value
-	[[ "$BotToken" =~ [0-9]+:[A-Za-z0-9_-]+ ]] || { echo '* "$BotToken" contains a invalid value. Unalix cannot be started!'; exit; }
+	[[ "$BotToken" =~ [0-9]+:[A-Za-z0-9_-]+ ]] || { echo -e '\033[0;31m"$BotToken" contains a invalid value. Unalix cannot be started!'; exit; }
 	
 	# Check if "$DoH" is a valid value'
 	if [[ "$DoH" =~ https://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:443)?(/[a-zA-Z0-9._-]*)? ]]; then
@@ -54,37 +54,37 @@ SetupUnalix(){
 
 	# Check if the package "idn" is installed
 	if [[ "$(idn 'i❤️.ws')" != 'xn--i-7iq.ws' ]]; then
-		echo '* The "idn" package is not installed, inaccessible or has limitations!'
+		echo -e '\033[0;31mThe "idn" package is not installed, inaccessible or has limitations!\033[0m'
 	fi
 	
 	# Check if the package "idn2" is installed
 	if [[ "$(idn2 'президент.рф')" != 'xn--d1abbgf6aiiy.xn--p1ai' ]]; then
-		echo '* The "idn2" package is not installed, inaccessible or has limitations!'
+		echo -e '\033[0;31mThe "idn2" package is not installed, inaccessible or has limitations!\033[0m'
 	fi
 	
 	# Check if the package "bash" is installed
-	if [[ ! "$(bash --version)" ]]; then
-		echo '* The "bash" package is not installed, inaccessible or has limitations!'; exit '1'
+	if [[ -z "$(bash --version)" ]]; then
+		echo -e '\033[0;31mThe "bash" package is not installed, inaccessible or has limitations!\033[0m'; exit '1'
 	fi
-	
+
 	# Check if the package "curl" is installed
-	if [[ ! "$(curl --version)" ]]; then
-		echo '* The "curl" package is not installed, inaccessible or has limitations!'; exit '1'
+	if [[ -z "$(curl --version)" ]]; then
+		echo -e '\033[0;31mThe "curl" package is not installed, inaccessible or has limitations!\033[0m'; exit '1'
 	fi
 	
 	# Check if the package "jq" is installed
-	if [[ ! "$(jq --version)" ]]; then
-		echo '* The "jq" package is not installed, inaccessible or has limitations!'; exit '1'
+	if [[ -z "$(jq --version)" ]]; then
+		echo -e '\033[0;31mThe "jq" package is not installed, inaccessible or has limitations!\033[0m'; exit '1'
 	fi
 	
 	# Check if the package "vim" is installed
-	if [[ ! "$(vim --version)" ]]; then
-		echo '* The "vim" package is not installed, inaccessible or has limitations!'; exit '1'
+	if [[ -z "$(vim --version)" ]]; then
+		echo -e '\033[0;31mThe "vim" package is not installed, inaccessible or has limitations!\033[0m'; exit '1'
 	fi
 	
 	# Check if the package "xmlstarlet" is installed
 	if [[ "$(echo '&amp;' | xmlstarlet -q 'unesc')" != '&' ]]; then
-		echo '* The "xmlstarlet" package is not installed, inaccessible or has limitations!'; exit '1'
+		echo -e '\033[0;31mThe "xmlstarlet" package is not installed, inaccessible or has limitations!\033[0m'; exit '1'
 	fi
 	
 	# Set default permissions
@@ -203,10 +203,10 @@ DetectPatterns(){
 # Set filename variables
 SetFilenameVariables(){
 
-	rm -f "$OriginalLinksFilename" "$EndResults" "$EndResults2" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
+	rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
 	OriginalLinksFilename="$HOME/Unalix/TempFiles/OriginalLinks-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	EndResults="$HOME/Unalix/TempFiles/EndResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	EndResults2="$HOME/Unalix/TempFiles/EndResults2-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	CleanedURLs="$HOME/Unalix/TempFiles/CleanedURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	EndRegex="$HOME/Unalix/TempFiles/EndRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
@@ -220,13 +220,13 @@ ParseTrackingParameters(){
 
 	URL=$(URLDecode "$URL")
 
-	DetectPatterns; SolveURLIssues; RemoveTrackingParameters
+	DetectPatterns; RemoveTrackingParameters; SolveURLIssues
 
 	MakeNetworkRequest
 
 	URL=$(URLDecode "$URL")
 
-	DetectPatterns; SolveURLIssues; RemoveTrackingParameters
+	DetectPatterns; RemoveTrackingParameters; SolveURLIssues
 
 }
 
@@ -245,11 +245,11 @@ GetEndResults(){
 MakeURLCompatible(){
 
 	if [ "$BatchMode" != 'true' ]; then
-		URL=$(echo "$URL" | sed -r 's/(%26|&){2,}//g; s/(\?&|%3f%26|%3F%26)/?/g; s/(%26|&)$//; s/(%3f|%3F|\?)$//; s/%26/&/g; s/(\+|\s|%(25)?20)/ /g; s/%(25)?23/#/g; s/(%2F|\/)$//g')
-		URL=$(URLEncode "$URL" | sed 's/%20/%2520/g')
+		URL=$(echo "$URL" | sed -r 's/(%26|&){2,}//g; s/(\?&|%3f%26|%3F%26)/?/g; s/(%26|&)$//; s/(%3f|%3F|\?)$//; s/%26/&/g; s/(\s|%(25)?20)/ /g; s/%(25)?23/#/g; s/(%2F|\/)$//g') && SolveURLIssues --fix-wrong-decoding
+		URL=$(URLEncode "$URL" | sed 's/%20/%2520/g') && SolveURLIssues --escape-character
 	else
-		URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/(%2F|\/)$//g')
-		URL=$(URLDecode "$URL" | sed -r 's/\s/%20/g')
+		URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/(%2F|\/)$//g') && SolveURLIssues --fix-wrong-decoding
+		URL=$(URLDecode "$URL" | sed -r 's/\s/%20/g') && SolveURLIssues --escape-character
 	fi
 
 }
@@ -258,7 +258,7 @@ MakeURLCompatible(){
 cleanup(){
 
 	TypingStatus --stop-sending
-	rm -f "$OriginalLinksFilename" "$EndResults" "$EndResults2" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
+	rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
 	exit '0'
 
 }
@@ -451,12 +451,34 @@ GenerateYandex(){
 
 }
 
-# Try to solve character decoding issues
+# Try to solve character parsing/decoding issues
 SolveURLIssues(){
 
-	# Fix twitter search
-	if [[ "$URL" =~ .*twitter\.com/search\?q\=.* ]]; then
-		URL=${URL//q=#/q=%23}
+	if [ "$1" = '--fix-wrong-decoding' ]; then
+		# Decide whether or not the "+" (plus sign) character should be considered a blank space
+		if [[ "$URL" =~ .*\?.*\+.* ]]; then
+			OriginalString=$(echo "$URL" | grep -Eo '\?.*[^?]' | sed 's/\//\\\//g')
+			if [ "$BatchMode" != 'true' ]; then
+				ModifiedString=$(echo "$OriginalString" | sed 's/+/ /g')
+			else
+				ModifiedString=$(echo "$OriginalString" | sed 's/+/%20/g')
+			fi
+			URL=${URL//$OriginalString/$ModifiedString}
+		fi
+	elif [ "$1" = '--escape-character' ]; then
+		# Fix twitter search
+		if [[ "$URL" =~ .*twitter\.com(/|%2(f|F))search(\?|%3(f|F))q(\=|%3(d|D)).* ]]; then
+			if [ "$BatchMode" != 'true' ]; then
+				URL=${URL//%23/%2523}
+			else
+				URL=${URL//#/%23}
+			fi
+		fi
+	else
+		# Fix twitter search
+		if [[ "$URL" =~ .*twitter\.com/search\?q\=.* ]]; then
+			URL=${URL//#/%23}
+		fi
 	fi
 
 }
@@ -470,10 +492,10 @@ SendBotStatus(){
 		elif [ "$1" = '--stopped' ]; then
 			sendMessage --chat_id "$StatusChatID" --text 'Unalix is down.' 2>&1 1>&/dev/null || { echo '* An error occurred while trying to send the status!'; return '1'; }
 		else
-			echo '* Invalid function call received. "$1" should be "started" or "stopped".' ; return '1'
+			echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 		fi
 	else
-		echo '* "$StatusChatID" contains a invalid value!'; return '1'
+		echo -e '\033[0;31m"$StatusChatID" contains a invalid value!\033[0m'; return '1'
 	fi
 
 }
@@ -492,7 +514,7 @@ TypingStatus(){
 	elif [ "$1" = '--stop-sending' ]; then
 		rm -f "$MessageSent"
 	else
-		echo '* Invalid function call received. "$1" should be "--start-sending" or "--stop-sending".'
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
 
 }
@@ -516,7 +538,7 @@ BotCommand_report(){
 			done
 		fi
 	else
-		echo '* Invalid function call received. "$1" should be "--send-usage" or "--store-user-report".'; return '1'
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
 
 }
@@ -534,13 +556,12 @@ BotCommand_cmd(){
 			CommandOutput="$HOME/Unalix/TempFiles/Output-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 			CommandToRun=$(echo "$message_text" | sed -r 's/^(\!|\/)(C|c)(M|m)(D|d)\s*//g; s/\\*//g; s/"\""/'\''/g')
 			timeout -s '9' "$ConnectionTimeout" bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"; ExitStatus="$?"
-			[[ $(wc -w < "$CommandOutput") != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }
-			cleanup
+			[[ $(wc -w < "$CommandOutput") != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }; cleanup
 		else
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, and therefore you are not authorized to execute commands through the terminal.' || { SendErrorMessage; }
 		fi
 	else
-		echo '* Invalid function call received. "$1" should be "--send-usage" or "--run-on-terminal".'; return '1'
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
 
 }
@@ -571,7 +592,7 @@ BotCommand_del_report(){
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have attempted to delete a report that does not belong to your user ID. Only bot administrators can perform this action.' || { SendErrorMessage; }
 		fi
 	else
-		echo '* Invalid function call received. "$1" should be "--send-usage" or "--delete-user-report".'; return '1'
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
 
 }
@@ -618,8 +639,8 @@ ProcessLinks(){
 			ParseTrackingParameters && GetEndResults
 		done
 
-		head -c '50000000' < "$EndResults" > "$EndResults2"
-		TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$EndResults2" || { SendErrorMessage; }; cleanup
+		head -c '50000000' < "$EndResults" > "$CleanedURLs"
+		TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$CleanedURLs" || { SendErrorMessage; }; cleanup
 
 	else
 		URL=$(cat "$LinksFilename" | ParseText | head -n '1')
@@ -663,7 +684,7 @@ DownloadFile(){
 # Code taken from https://gist.github.com/cdown/1163649
 URLDecode(){
 
-	printf '%b' "${1//%/\\x}"
+	printf '%b' "${*//%/\\x}"
 
 }
 
@@ -678,7 +699,7 @@ URLEncode(){
 			[a-zA-Z0-9.~_-])
 				printf "$URL";;
 			*)
-				echo -en "$URL" | xxd -p -c '1' | while read 'Result'; do printf "%%%s" "$Result"; done;;
+				printf "$URL" | xxd -p -c '1' | while read -r 'Result'; do printf "%%%s" "$Result"; done;;
 		esac
 	done
 
@@ -695,7 +716,7 @@ GetLinksContent(){
 # This function is used to process the text of messages, txt files and web pages (obtain valid values).
 ParseText(){
 
-	xmlstarlet -q 'unesc' | sed -r 's/(\s|\t|"|\(|\)|<|>|,)+/\n/g; s/(H|h)(T|t)(T|t)(P|p)(S|s)?(:\/\/|%3A%2F%2F|%3a%2f%2f)/http\6/g' | grep -Eo "\bhttps?(://|%3A%2F%2F|%3a%2f%2f)[^\ $(printf '\n')$(printf '\t')\"()<>,]*" | sed -r '/.{1,}\..{2,}(:[0-9]{1,5})?(\/|%2F|\?|#)?/!d' | awk 'NF && !seen[$0]++'
+	xmlstarlet -q 'unesc' | sed -r 's/(\s|\t|"|\(|\)|<|>|,|'\'')+/\n/g; s/(H|h)(T|t)(T|t)(P|p)(S|s)?(:\/\/|%3A%2F%2F|%3a%2f%2f)/http\6/g' | grep -Eo "\bhttps?(://|%3A%2F%2F|%3a%2f%2f)[^\ $(printf '\n')$(printf '\t')\"(')<>,]+" | sed -r '/.{1,}\..{2,}(:[0-9]{1,5})?(\/|%2F|\?|#)?/!d' | awk 'NF && !seen[$0]++'
 
 }
 
@@ -706,6 +727,37 @@ GetDomainName(){
 
 }
 
+# This function is used to encode non-UTF-8 texts sent from the "/encodetext" command.
+BotCommand_encodetext(){
+
+	# Send basic command usage information
+	if [ "$1" = '--send-usage' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/encodetext <string_or_text_here>`\nor\n`!encodetext <string_or_text_here>`\n\n*Example:*\n\n`/encodetext %e7%be%a4%e9%9d%92%e3%81%ae%e3%83%a1%e3%82%b5%e3%82%a4%e3%82%a2`\nor\n`!encodetext %e7%be%a4%e9%9d%92%e3%81%ae%e3%83%a1%e3%82%b5%e3%82%a4%e3%82%a2`\n\n*Description:*\n\nThis command allows the user to convert non-UTF-8 characters to valid UTF-8 format.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+	# Encode text
+	elif [ "$1" = '--encode-text' ]; then
+		DecodedText=$(echo -e "$message_text" | sed -r 's/^(\!|\/)(e|E)(n|N)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g' )
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(URLEncode "$DecodedText" | sed 's/%/%25/g' | head -c '4096')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
+	else
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
+	fi
+	
+}
+
+# This function is used to decode UTF-8 texts sent from the "/decodetext" command.
+BotCommand_decodetext(){
+
+	# Send basic command usage information
+	if [ "$1" = '--send-usage' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/decodetext <string_or_text_here>`\nor\n`!decodetext <string_or_text_here>`\n\n*Example:*\n\n`/decodetext %25c3%25a3%25c4%2581%25c3%25a5%25c3%25a4`\nor\n`!decodetext %25c3%25a3%25c4%2581%25c3%25a5%25c3%25a4`\n\n*Description:*\n\nThis command allows the user to convert UTF-8 characters to human-readable text.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+	# Decode text
+	elif [ "$1" = '--decode-text' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(echo $message_text | sed -r 's/^(\!|\/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
+	else
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
+	fi
+
+}
+
 # Initial setup
 SetupUnalix
 
@@ -713,24 +765,24 @@ SetupUnalix
 [ "$GenerateUserAgents" != 'false' ] && GenerateUserAgent || { UserAgent='Mozilla/5.0 (X11; Linux i586; rv:31.0) Gecko/20100101 Firefox/71.0'; }
 
 # A basic internet connection check
-echo '- Checking internet connection...' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head --user-agent "$UserAgent" $NetworkProtocol $Socks5 --url 'https://www.gnu.org:443/robots.txt' $DoHOptions 1>/dev/null && echo '- Success!' || { echo '* No response received!'; exit; }
+echo -e '\033[0;33mChecking internet connection...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head --user-agent "$UserAgent" $NetworkProtocol $Socks5 --url 'https://www.gnu.org:443/robots.txt' $DoHOptions 1>/dev/null && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
 
 # Check if the API can be accessed
-echo '- Checking access to the API...' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head --user-agent "$UserAgent" $NetworkProtocol $Socks5 --url 'https://api.telegram.org:443/robots.txt' $DoHOptions 1>/dev/null && echo '- Success!' || { echo '* No response received!'; exit; }
+echo -e '\033[0;33mChecking access to the API...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head --user-agent "$UserAgent" $NetworkProtocol $Socks5 --url 'https://api.telegram.org:443/robots.txt' $DoHOptions 1>/dev/null && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
 
 # Import ShellBot functions library
-echo '- Importing functions...' && source "$HOME/Unalix/Dependencies/ShellBot.sh" && echo '- Success!' || { echo '* An unknown error has occurred!'; exit; }
+echo -e '\033[0;33mImporting functions..\033[0m.' && source "$HOME/Unalix/Dependencies/ShellBot.sh" && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mAn unknown error has occurred!\033[0m'; exit; }
 
 # Start the bot
-echo '- Starting bot...' && init --token "$BotToken" 1>/dev/null; echo '- Success!'
+echo -e '\033[0;33mStarting bot...\033[0m' && init --token "$BotToken" 1>/dev/null; echo -e '\033[0;32mSuccess!\033[0m'
 
 # Send "Unalix is up" to "$StatusChatID"
-echo '- Trying to send bot status to the chat...' && SendBotStatus --started && echo '- Success!'
+echo -e '\033[0;33mTrying to send bot status to the chat...\033[0m' && SendBotStatus --started && echo -e '\033[0;32mSuccess!\033[0m'
 
 # Trap signals and other events
-trap "echo '- Trying to send bot status to the chat...' && SendBotStatus --stopped && echo '- Success!' ; cleanup" 'INT' 'TERM'
+trap "echo -e '\033[0;33mTrying to send bot status to the chat...' && SendBotStatus --stopped && echo -e '\033[0;32mSuccess!\033[0m' ; cleanup" 'INT' 'TERM'
 
-echo '- Getting updates from the API...'
+echo -e '\033[0;33mGetting updates from the API...\033[0m'
 
 while true; do
 
@@ -760,6 +812,14 @@ while true; do
 			BotCommand_del_report --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_.{6,}$ ]]; then
 			BotCommand_del_report --delete-user-report
+		elif [[ "$message_text" =~ ^(\!|/)(e|E)(n|N)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)$ ]]; then
+			BotCommand_encodetext --send-usage
+		elif [[ "$message_text" =~ ^(\!|/)(e|E)(n|N)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T).+$ ]]; then
+			BotCommand_encodetext --encode-text
+		elif [[ "$message_text" =~ ^(\!|/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)$ ]]; then
+			BotCommand_decodetext --send-usage
+		elif [[ "$message_text" =~ ^(\!|/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T).+$ ]]; then
+			BotCommand_decodetext --decode-text
 		elif [ "$message_document_mime_type" = 'text/plain' ]; then
 			GetFromFile='true' && SetFilenameVariables && ProcessLinks
 		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L)$ ]]; then
@@ -773,7 +833,7 @@ while true; do
 		else
 			exit '0'
 		fi
-	done &
+	done & # Loops run in background
 done
 
 trap - 'INT' 'TERM'
