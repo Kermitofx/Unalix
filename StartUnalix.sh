@@ -6,7 +6,7 @@ MakeNetworkRequest(){
 	# If curl cannot access the link for any reason, the value of the "$URL" variable will be considered the "final URL"
 	echo "$URL" > "$TrashURLFilename"
 	# Make request
-	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$URL" --user-agent "$UserAgent" $DoHOptions | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | ParseText >> "$TrashURLFilename"
+	timeout -s '9' "$ConnectionTimeout" curl -LNkB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$URL" --user-agent "$UserAgent" $DoHOptions | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | ParseText >> "$TrashURLFilename"
 	# If the URL does not have a valid protocol, set it to http
 	sed -ri 's/^(https?(:\/\/|%3A%2F%2F|%3a%2f%2f))?/http:\/\//g' "$TrashURLFilename"
 	# Set received data
@@ -25,10 +25,10 @@ SetupUnalix(){
 	[ -d "$HOME/Unalix/Reports" ] || { mkdir -p "$HOME/Unalix/Reports"; }
 	
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
-	source "$HOME/Unalix/Settings/Settings.txt" || { echo -e '\033[0;31mAn error occurred while trying to import the settings file!'; exit; }
+	source "$HOME/Unalix/Settings/Settings.txt" || { echo -e '\033[0;31mAn error occurred while trying to import the settings file!\033[0m'; exit; }
 
 	# Check if "$BotToken" is a valid value
-	[[ "$BotToken" =~ [0-9]+:[A-Za-z0-9_-]+ ]] || { echo -e '\033[0;31m"$BotToken" contains a invalid value. Unalix cannot be started!'; exit; }
+	[[ "$BotToken" =~ [0-9]+:[A-Za-z0-9_-]+ ]] || { echo -e '\033[0;31m"$BotToken" contains a invalid value. Unalix cannot be started!\033[0m'; exit; }
 	
 	# Check if "$DoH" is a valid value'
 	if [[ "$DoH" =~ https://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:443)?(/[a-zA-Z0-9._-]*)? ]]; then
@@ -104,7 +104,7 @@ RemoveTrackingParameters(){
 	done
 
 	# The "redirect" URL needs to be decoded, since it may contain encoded characters
-	URL=$(URLDecode "$URL")
+	URL=$(DecodeText "$URL")
 
 	# Remove specific fields
 	for RegexRules in $(sed -r '/^Redirection\=/d; /^#.*|^$/d' < "$EndRegex")
@@ -203,7 +203,7 @@ DetectPatterns(){
 # Set filename variables
 SetFilenameVariables(){
 
-	rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
+	rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename" "$DNSAnswerFilename" "$IPAddressFilename"
 	OriginalLinksFilename="$HOME/Unalix/TempFiles/OriginalLinks-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	EndResults="$HOME/Unalix/TempFiles/EndResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	CleanedURLs="$HOME/Unalix/TempFiles/CleanedURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
@@ -212,19 +212,21 @@ SetFilenameVariables(){
 	TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	LinksFilename="$HOME/Unalix/TempFiles/Links-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
 	GetFromURLsFilename="$HOME/Unalix/TempFiles/GetFromURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	DNSAnswerFilename="$HOME/Unalix/TempFiles/Resolved-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
+	IPAddressFilename="$HOME/Unalix/TempFiles/IPAddress-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
 
 }
 
 # This is the main function. It calls all other functions related to removal of tracking fields
 ParseTrackingParameters(){
 
-	URL=$(URLDecode "$URL")
+	URL=$(DecodeText "$URL")
 
 	DetectPatterns; RemoveTrackingParameters; SolveURLIssues
 
 	MakeNetworkRequest
 
-	URL=$(URLDecode "$URL")
+	URL=$(DecodeText "$URL")
 
 	DetectPatterns; RemoveTrackingParameters; SolveURLIssues
 
@@ -246,10 +248,10 @@ MakeURLCompatible(){
 
 	if [ "$BatchMode" != 'true' ]; then
 		URL=$(echo "$URL" | sed -r 's/(%26|&){2,}//g; s/(\?&|%3f%26|%3F%26)/?/g; s/(%26|&)$//; s/(%3f|%3F|\?)$//; s/%26/&/g; s/(\s|%(25)?20)/ /g; s/%(25)?23/#/g; s/(%2F|\/)$//g') && SolveURLIssues --fix-wrong-decoding
-		URL=$(URLEncode "$URL" | sed 's/%20/%2520/g') && SolveURLIssues --escape-character
+		URL=$(EncodeText "$URL" | sed 's/%20/%2520/g') && SolveURLIssues --escape-character
 	else
 		URL=$(echo "$URL" | sed -r 's/&{2,}//g; s/\?&/?/g; s/(%26|&)$//; s/(%3F|\?)$//; s/(%2F|\/)$//g') && SolveURLIssues --fix-wrong-decoding
-		URL=$(URLDecode "$URL" | sed -r 's/\s/%20/g') && SolveURLIssues --escape-character
+		URL=$(DecodeText "$URL" | sed -r 's/\s/%20/g') && SolveURLIssues --escape-character
 	fi
 
 }
@@ -455,31 +457,23 @@ GenerateYandex(){
 SolveURLIssues(){
 
 	if [ "$1" = '--fix-wrong-decoding' ]; then
-		# Decide whether or not the "+" (plus sign) character should be considered a blank space
+		# Decide whether or not the "+" (plus sign) character should be considered a blank space 
 		if [[ "$URL" =~ .*\?.*\+.* ]]; then
 			OriginalString=$(echo "$URL" | grep -Eo '\?.*[^?]' | sed 's/\//\\\//g')
-			if [ "$BatchMode" != 'true' ]; then
-				ModifiedString=$(echo "$OriginalString" | sed 's/+/ /g')
-			else
-				ModifiedString=$(echo "$OriginalString" | sed 's/+/%20/g')
-			fi
+			[ "$BatchMode" != 'true' ] && ModifiedString=${OriginalString//+/ } || { ModifiedString=${OriginalString//+/%20}; }
 			URL=${URL//$OriginalString/$ModifiedString}
 		fi
 	elif [ "$1" = '--escape-character' ]; then
 		# Fix twitter search
 		if [[ "$URL" =~ .*twitter\.com(/|%2(f|F))search(\?|%3(f|F))q(\=|%3(d|D)).* ]]; then
-			if [ "$BatchMode" != 'true' ]; then
-				URL=${URL//%23/%2523}
-			else
-				URL=${URL//#/%23}
-			fi
+			[ "$BatchMode" != 'true' ] && URL=${URL//%23/%2523} || { URL=${URL//#/%23}; }
 		fi
 	else
 		# Fix twitter search
-		if [[ "$URL" =~ .*twitter\.com/search\?q\=.* ]]; then
-			URL=${URL//#/%23}
-		fi
+		[[ "$URL" =~ .*twitter\.com/search\?q\=.* ]] && URL=${URL//#/%23}
+		return '0'
 	fi
+
 
 }
 
@@ -488,9 +482,9 @@ SendBotStatus(){
 
 	if [[ "$StatusChatID" =~ (-?[0-9]+|@?[A-Za-z0-9]{5,32}) ]]; then
 		if [ "$1" = '--started' ]; then
-			sendMessage --chat_id "$StatusChatID" --text 'Unalix is up.' 2>&1 1>&/dev/null || { echo '* An error occurred while trying to send the status!'; return '1'; }
+			sendMessage --chat_id "$StatusChatID" --text 'Unalix is up.' 1 > '/dev/null' 2 > '/dev/null' || { echo -e '\033[0;31mAn error occurred while trying to send the status!\033[0m'; return '1'; }
 		elif [ "$1" = '--stopped' ]; then
-			sendMessage --chat_id "$StatusChatID" --text 'Unalix is down.' 2>&1 1>&/dev/null || { echo '* An error occurred while trying to send the status!'; return '1'; }
+			sendMessage --chat_id "$StatusChatID" --text 'Unalix is down.' 1 > '/dev/null' 2 > '/dev/null' || { echo -e '\033[0;31mAn error occurred while trying to send the status!\033[0m'; return '1'; }
 		else
 			echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 		fi
@@ -508,7 +502,7 @@ TypingStatus(){
 		MessageSent="$HOME/Unalix/TempFiles/MessageSent-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt" && touch "$MessageSent"
 		while [ -f "$MessageSent" ]
 		do
-			sendChatAction --chat_id "$message_chat_id" --action 'typing' 2>&1 1>&/dev/null
+			sendChatAction --chat_id "$message_chat_id" --action 'typing' 1 > '/dev/null' 2 > '/dev/null'
 		done &
 	# The loop will be broken when the $MessageSent file is deleted.
 	elif [ "$1" = '--stop-sending' ]; then
@@ -525,7 +519,7 @@ BotCommand_report(){
 
 	# Send basic command usage information
 	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\nor\n`!report This bot sucks! Why don'\''t you give up on him and commit suicide right away?`\n\n*Description:*\n\nUse this command to send a direct message to bot administrators. If you prefer, enter your email or username so that we can contact you if necessary.' --parse_mode 'markdown' || { SendErrorMessage; }
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report I'\''m just getting in touch to say that this bot is really cool!`\nor\n`!report I'\''m just getting in touch to say that this bot is really cool!`\n\n*Description:*\n\nUse this command to send a direct message to bot administrators. If you prefer, enter your email or username so that we can contact you if necessary.' --parse_mode 'markdown' || { SendErrorMessage; }
 	# Try to store the submitted report
 	elif [ "$1" = '--store-user-report' ]; then
 		if [ -f "$HOME/Unalix/Reports/$message_chat_id" ]; then
@@ -534,7 +528,7 @@ BotCommand_report(){
 			echo -e "$message_text" | sed -r 's/^(\!|\/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
 			for Administrators in $(cd "$HOME/Unalix/Administrators" && ls)
 			do
-				sendMessage --chat_id "$Administrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(cat "$HOME/Unalix/Reports/$message_chat_id" | head -c '3800')\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
+				sendMessage --chat_id "$Administrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(head -c '3800' < "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
 			done
 		fi
 	else
@@ -624,14 +618,9 @@ ProcessLinks(){
 		TypingStatus --start-sending && BatchMode='true'
 		mv "$LinksFilename" "$OriginalLinksFilename" && rm -f "$LinksFilename" || { SendErrorMessage; }
 
-		for Domain in $(GetDomainName < "$OriginalLinksFilename")
+		for Domain in $(GetHostname < "$OriginalLinksFilename")
 		do
-			idn "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn "$Domain")
-			idn2 "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn2 "$Domain")
-			if [ "$Punycode" ]; then
-				[ "$Punycode" != "$Domain" ] && sed -i "s/$Domain/$Punycode/g" "$OriginalLinksFilename"
-				unset 'Punycode'
-			fi
+			GetPunycode --from-file
 		done
 
 		for URL in $(cat "$OriginalLinksFilename"); do
@@ -643,19 +632,13 @@ ProcessLinks(){
 		TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$CleanedURLs" || { SendErrorMessage; }; cleanup
 
 	else
-		URL=$(cat "$LinksFilename" | ParseText | head -n '1')
+		URL=$(ParseText < "$LinksFilename" | head -n '1')
 		rm -f "$OriginalLinksFilename" "$LinksFilename"
 			
 		TypingStatus --start-sending
 	
-		Domain=$(echo "$URL" | GetDomainName)
-		idn "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn "$Domain")
-		idn2 "$Domain" 2>&1 1>&/dev/null && Punycode=$(idn2 "$Domain")
-	
-		if [ "$Punycode" ]; then
-			[ "$Punycode" != "$Domain" ] && URL="${URL//$Domain/$Punycode}"
-			unset 'Punycode'
-		fi
+		Domain=$(echo "$URL" | GetHostname)
+		GetPunycode --from-variable
 	
 		ParseTrackingParameters && GetEndResults || { SendErrorMessage; }; cleanup
 
@@ -668,29 +651,35 @@ ProcessLinks(){
 # This function is used to send an error message to the user when an operation returns a negative value.
 SendErrorMessage(){
 
-	TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'
+	TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup
 
 }
 
 # This function is used to download txt files
 DownloadFile(){
 
-	alias DownloadThis='timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "https://api.telegram.org:443/file/bot$BotToken/$DownloadFilePath" --user-agent "$UserAgent" $DoHOptions'
-	eval DownloadThis
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "https://api.telegram.org:443/file/bot$BotToken/$DownloadFilePath" --user-agent "$UserAgent" $DoHOptions
+	
+}
+
+# This function is used to obtain the contents of the URLs sent using the command "/getfromurl"
+GetLinksContent(){
+
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$Links" --user-agent "$UserAgent" $DoHOptions
 
 }
 
-# This function is used to decode links sent by users (e.g: from "N%c3%a3o" to "Não").
-# Code taken from https://gist.github.com/cdown/1163649
-URLDecode(){
+# This function is used to decode messages sent by users (e.g: from "N%c3%a3o" to "Não").
+# Code taken from: https://gist.github.com/cdown/1163649
+DecodeText(){
 
 	printf '%b' "${*//%/\\x}"
 
 }
 
-# This function is used to encode links sent by users (e.g: from "Não" to "N%c3%a3o").
-# Code taken from https://gist.github.com/cdown/1163649#gistcomment-1256298
-URLEncode(){
+# This function is used to encode messages sent by users (e.g: from "Não" to "N%c3%a3o").
+# Code taken from: https://gist.github.com/cdown/1163649#gistcomment-1256298
+EncodeText(){
 
 	local BytesCount="${#1}"
 	for (( i = 0; i < BytesCount; i++ )); do
@@ -705,14 +694,6 @@ URLEncode(){
 
 }
 
-
-# This function is used to obtain the contents of the URLs sent using the command "/getfromurl"
-GetLinksContent(){
-
-	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$Links" --user-agent "$UserAgent" $DoHOptions
-
-}
-
 # This function is used to process the text of messages, txt files and web pages (obtain valid values).
 ParseText(){
 
@@ -720,10 +701,10 @@ ParseText(){
 
 }
 
-# This function is used to obtain the domain names of the links sent by users.
-GetDomainName(){
+# This function is used to obtain the hostname of links
+GetHostname(){
 
-	sed -r 's/^https?:\/\/|(\/|%2F|\?|#).*$//g' | tr '[:upper:]' '[:lower:]'
+	sed -r 's/^.*:\/\/|\/.*//g; s/:[0-9]{1,5}.*//g' | tr '[:upper:]' '[:lower:]'
 
 }
 
@@ -732,11 +713,11 @@ BotCommand_encodetext(){
 
 	# Send basic command usage information
 	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/encodetext <string_or_text_here>`\nor\n`!encodetext <string_or_text_here>`\n\n*Example:*\n\n`/encodetext %e7%be%a4%e9%9d%92%e3%81%ae%e3%83%a1%e3%82%b5%e3%82%a4%e3%82%a2`\nor\n`!encodetext %e7%be%a4%e9%9d%92%e3%81%ae%e3%83%a1%e3%82%b5%e3%82%a4%e3%82%a2`\n\n*Description:*\n\nThis command allows the user to convert non-UTF-8 characters to valid UTF-8 format.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/encodetext <string_or_text_here>`\nor\n`!encodetext <string_or_text_here>`\n\n*Example:*\n\n`/encodetext %e3%81%86%e3%81%a1%e3%81%ae%e5%a8%98%e3%81%ae%e7%82%ba%e3%81%aa%e3%82%89%e3%81%b0%e3%80%81%e4%bf%ba%e3%81%af%e3%82%82%e3%81%97%e3%81%8b%e3%81%97%e3%81%9f%e3%82%89%e9%ad%94%e7%8e%8b%e3%82%82%e5%80%92%e3%81%9b%e3%82%8b%e3%81%8b%e3%82%82%e3%81%97%e3%82%8c%e3%81%aa%e3%81%84%e3%80%82`\nor\n`!encodetext %e3%81%86%e3%81%a1%e3%81%ae%e5%a8%98%e3%81%ae%e7%82%ba%e3%81%aa%e3%82%89%e3%81%b0%e3%80%81%e4%bf%ba%e3%81%af%e3%82%82%e3%81%97%e3%81%8b%e3%81%97%e3%81%9f%e3%82%89%e9%ad%94%e7%8e%8b%e3%82%82%e5%80%92%e3%81%9b%e3%82%8b%e3%81%8b%e3%82%82%e3%81%97%e3%82%8c%e3%81%aa%e3%81%84%e3%80%82`\n\n*Description:*\n\nThis command allows the user to convert non-UTF-8 characters to valid UTF-8 format.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 	# Encode text
 	elif [ "$1" = '--encode-text' ]; then
 		DecodedText=$(echo -e "$message_text" | sed -r 's/^(\!|\/)(e|E)(n|N)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g' )
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(URLEncode "$DecodedText" | sed 's/%/%25/g' | head -c '4096')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(EncodeText "$DecodedText" | sed 's/%/%25/g' | head -c '4096')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
 	else
 		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
@@ -755,6 +736,177 @@ BotCommand_decodetext(){
 	else
 		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
+
+}
+
+# Check if the query sent by the user is valid
+CheckUserQuery(){
+
+	if echo "$UserQuery" | grep -Eq '\.onion$'; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Tor/Onion-related domains cannot be resolved.' || { SendErrorMessage; }; cleanup
+	elif echo "$UserQuery" | grep -Eq '\.i2p$'; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Domains related to the I2P network cannot be resolved.' || { SendErrorMessage; }; cleanup
+	elif echo "$UserQuery" | grep -Pq '[0-9a-zA-Z\.-]+\.[a-zA-Z\.]{2,6}'; then
+		TypingStatus --start-sending && MakeDNSTest && ResolveQuery && QueryIP
+	elif echo "$UserQuery" | grep -Pq '((?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)'; then
+		TypingStatus --start-sending && IPAddress="$UserQuery" && QueryIP
+	else
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your query is invalid.' || { SendErrorMessage; }; cleanup
+	fi
+
+}
+
+# This function is used to verify that DNS resolvers are operational
+MakeDNSTest(){
+
+	# These are the DNS servers that can be used to resolve domains sent using the "/ip" command.
+	# Uncensored DNS (Netherlands) | http://securedns.eu
+	if CheckIfReachable 'https://doh.securedns.eu:443/dns-query?name=gnu.org' --dns; then
+		DNSResolver='https://doh.securedns.eu:443/dns-query?name='
+	# Uncensored DNS (Finland) | http://snopyta.org/service/dns
+	elif CheckIfReachable 'https://fi.doh.dns.snopyta.org:443/dns-query?name=gnu.org' --dns; then
+		DNSResolver='https://fi.doh.dns.snopyta.org:443/dns-query?name='
+	# Google DNS | http://developers.google.com/speed/public-dns (privacy-unfriendly)
+	elif CheckIfReachable 'https://dns.google:443/resolve?name=gnu.org' --dns; then
+		DNSResolver='https://dns.google:443/resolve?name='
+	else
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'No DNS server can process your request at this time.' || { SendErrorMessage; }; cleanup
+	fi
+
+}
+
+# This function is used to check if the response sent by the server is positive
+CheckIfReachable(){
+
+	if [ "$2" = '--dns' ]; then
+		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf -H 'accept: application/dns-json' --no-progress-meter --head --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
+	else
+		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
+	fi
+
+}
+
+# This function is used to make requests to DNS resolvers and also for IP address lookup APIs
+MakeRequest(){
+
+	if [ "$2" = '--resolve' ]; then
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$DNSResolver$1" -o "$DNSAnswerFilename"
+	else
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$API" -o "$IPAddressFilename"
+	fi
+
+}
+
+# This function will resolve domain names using the DNS resolver selected by the "MakeDNSTest" function
+ResolveQuery(){
+
+	# IPv4
+	if MakeRequest "$UserQuery&type=A" --resolve && IsPv4; then
+		IsPv4 --set-variable || { SendErrorMessage; }
+	# IPv6
+	elif MakeRequest "$UserQuery&type=AAAA" --resolve && IsPv6; then
+		IsPv6 --set-variable || { SendErrorMessage; }
+	else
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to resolve the domain name.' || { SendErrorMessage; }; cleanup
+	fi
+
+}
+
+# This function is used to verify that the IP address returned by the DNS resolver is a valid IPv4 address.
+IsPv4(){
+
+	if [ "$1" != '--set-variable' ]; then
+		grep -Pq '\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b' "$DNSAnswerFilename"
+	else
+		IPAddress=$(grep -Po '\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b' "$DNSAnswerFilename" | head -n '1')
+	fi
+
+}
+
+# This function is used to verify that the IP address returned by the DNS resolver is a valid IPv6 address.
+IsPv6(){
+
+	if [ "$1" != '--set-variable' ]; then
+		grep -Pq '(?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}' "$DNSAnswerFilename"
+	else
+		IPAddress=$(grep -Po '(?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}' "$DNSAnswerFilename" | head -n '1')
+	fi
+
+}
+
+
+# This function will query information about IP addresses and then send it to the user using the Telegram API
+QueryIP(){
+
+	if CheckIfReachable 'https://ipapi.co:443/json'; then
+		API="https://ipapi.co:443/$IPAddress/json" && APIName='ipapi.co'
+	elif CheckIfReachable 'http://ip-api.com:80/json'; then
+		API="http://ip-api.com:80/json/$IPAddress" && APIName='ip-api.com'
+	else
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'No API can process your request at this time.' || { SendErrorMessage; }; cleanup
+	fi
+
+	if MakeRequest; then
+		TypingStatus --stop-sending
+		if [ "$APIName" = 'ipapi.co' ]; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Query*: \`$(jq -r '.ip' < "$IPAddressFilename")\`\n*Owner*: \`$(jq -r '.asn' < "$IPAddressFilename")\` - \`$(jq -r '.org' < "$IPAddressFilename")\`\n*City*: \`$(jq -r '.city' < "$IPAddressFilename")\`\n*Region/State*: \`$(jq -r '.region' < "$IPAddressFilename")\`\n*Country*: \`$(jq -r '.country_name' < "$IPAddressFilename")\`\n*Latitude*: \`$(jq -r '.latitude' < "$IPAddressFilename")\`\n*Longitude*: \`$(jq -r '.longitude' < "$IPAddressFilename")\`\n*Postal Code*: \`$(jq -r '.postal' < "$IPAddressFilename")\`\n*Timezone*: \`$(jq -r '.timezone' < "$IPAddressFilename")\`" --parse_mode 'markdown' || { SendErrorMessage; }; cleanup
+		elif [ "$APIName" = 'ip-api.com' ]; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Query*: \`$(jq -r '.query' < "$IPAddressFilename")\`\n*Owner*: \`$(jq -r '.as' < "$IPAddressFilename")\`\n*City*: \`$(jq -r '.city' < "$IPAddressFilename")\`\n*Region/State*: \`$(jq -r '.regionName' < "$IPAddressFilename")\`\n*Country*: \`$(jq -r '.country' < "$IPAddressFilename")\`\n*Latitude*: \`$(jq -r '.lat' < "$IPAddressFilename")\`\n*Longitude*: \`$(jq -r '.lon' < "$IPAddressFilename")\`\n*Postal Code*: \`$(jq -r '.zip' < "$IPAddressFilename")\`\n*Timezone*: \`$(jq -r '.timezone' < "$IPAddressFilename")\`" --parse_mode 'markdown' || { SendErrorMessage; }; cleanup
+		else
+			SendErrorMessage
+		fi
+	else
+		SendErrorMessage
+	fi
+
+}
+
+# This function is used to obtain the valid punycode of the domain names of the links sent by the user.
+# This is only relevant for domain names that contain emojis and/or non-Latin characters.
+GetPunycode(){
+
+	if [ "$1" != '--from-user-query' ]; then
+		idn "$Domain" 2>&1 1>/dev/null && Punycode=$(idn "$Domain")
+		idn2 "$Domain" 2>&1 1>/dev/null && Punycode=$(idn2 "$Domain")
+		if [ "$Punycode" ]; then
+			if [ "$1" = '--from-file' ]; then
+				[ "$Punycode" != "$Domain" ] && sed -i "s/$Domain/$Punycode/g" "$OriginalLinksFilename"
+			elif [ "$1" = '--from-variable' ]; then
+				[ "$Punycode" != "$Domain" ] && URL="${URL//$Domain/$Punycode}"
+			fi
+			unset 'Punycode'
+		fi
+	else
+		idn "$UserQuery" 2>&1 1>/dev/null && Punycode=$(idn "$UserQuery")
+		idn2 "$UserQuery" 2>&1 1>/dev/null && Punycode=$(idn2 "$UserQuery")
+		if [ "$Punycode" ]; then
+			[ "$Punycode" != "$UserQuery" ] && UserQuery="$Punycode"
+		fi
+	fi
+
+	return '0'
+
+}
+
+BotCommand_head(){
+
+# Send basic command usage information
+	if [ "$1" = '--send-usage' ]; then
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/head <ipv4_address_here>`\nor\n`!head <ipv4_address_here>`\n\n*Example:*\n\n`/head http://www.example.org/robots.txt`\nor\n`!head http://www.example.org/robots.txt`\n\n*Description:*\n\nThis command allows users to perform a HEAD request to websites/servers. The request will be made using cURL and all network traffic will pass through the Tor network. Note that IPv6 is not supported.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+	# Decode text
+	elif [ "$1" = '--make-request' ]; then
+		if echo "$URL" | grep -Pq '(https?(://|%3A%2F%2F|%3a%2f%2f))?([0-9a-zA-Z\.-]+\.[a-zA-Z\.]{2,6}|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))[^\ $(printf '\n')$(printf '\t')"('\'')<>,]*'; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "$(MakeHeadRequest "$URL")" --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		fi
+	else
+		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
+	fi
+
+}
+
+MakeHeadRequest(){
+
+	timeout -s '9' "$ConnectionTimeout" curl --silent -NkBf --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$1" | sed -r 's/(HTTP\/[0-9](\.[0-9])?)/Protocol: \1\n/g; s/\s([0-9]{3}\s\w.*)/Status: \1/g; s/^([A-Za-z0-9-]+):(\s)(.+)$/*\1*:\2\`\3\`/gm; s/\r//g'
 
 }
 
@@ -780,7 +932,7 @@ echo -e '\033[0;33mStarting bot...\033[0m' && init --token "$BotToken" 1>/dev/nu
 echo -e '\033[0;33mTrying to send bot status to the chat...\033[0m' && SendBotStatus --started && echo -e '\033[0;32mSuccess!\033[0m'
 
 # Trap signals and other events
-trap "echo -e '\033[0;33mTrying to send bot status to the chat...' && SendBotStatus --stopped && echo -e '\033[0;32mSuccess!\033[0m' ; cleanup" 'INT' 'TERM'
+trap "echo -e '\033[0;33mTrying to send bot status to the chat...\033[0m' && SendBotStatus --stopped && echo -e '\033[0;32mSuccess!\033[0m' ; cleanup" 'INT' 'TERM'
 
 echo -e '\033[0;33mGetting updates from the API...\033[0m'
 
@@ -796,7 +948,7 @@ while true; do
 	for id in "$(ListUpdates)"; do
 
 		# Check if the text sent is part of a file (e.g: photo, video or document)
-		[ ! "$message_text" ] && message_text="$message_caption"
+		[ -z "$message_text" ] && message_text="$message_caption"
 
 		if [[ "$message_text" =~ ^(\!|/)(S|s)(T|t)(A|a)(R|r)(T|t)$ ]]; then
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send via a message or inside a txt file the links you want to be "clean". Unalix will begin processing your request and within a few seconds (or minutes, depending on the number of links), it will send you the final result.\n\nUnalix is also able to process links from web pages. To do this, submit the URLs using the `/getfromurl` command. Unalix will download the entire contents of these URLs, obtain all the `http`/`https` links and process them in a batch operation.\n\nIn order to be able to identify the links contained in the message, txt file or web page, they must be in the following format:\n\n• It must start with `http://` or `https://` (case-insensitive)\n• It must have a domain name in Latin (`example.org`) or non-Latin (`президент.рф`) alphabet. Links with emoji domain name (`i❤️.ws`) are also supported.\n\n[Testing the bot with a link from an Amazon product](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example.png)\n\nIf you want Unalix to process multiple links from a single message, txt file or web page, separate them by a whitespace character (`\s`), tab (`\\t`), comma (`,`) or a new line (`\\n`).\n\n_Note: If you submit more than 1 link, the results will be sent in a txt file._\n\n[Testing the bot with multiple links in a single message](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example2.png)\n\nNote that Unalix can also identify links in forwarded messages and file captions.\n\nFor more information about Unalix, take a look at our [GitHub repository](http://github.com/SnwMds/Unalix) (Yes, it'\''s fully open source!).' --parse_mode 'markdown' --disable_web_page_preview 'true' || { SendErrorMessage; }; cleanup
@@ -820,16 +972,24 @@ while true; do
 			BotCommand_decodetext --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T).+$ ]]; then
 			BotCommand_decodetext --decode-text
+		elif [[ "$message_text" =~ ^(\!|/)(i|I)(p|P)$ ]]; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/ip <ipv4_or_ipv6_address_here>`\nor\n`!ip <ipv4_or_ipv6_address_here>`\n\n*Example:*\n\n`/ip uncensored.any.dns.nixnet.xyz`\nor\n`!ip uncensored.any.dns.nixnet.xyz`\n\n*Description:*\n\nThis command allows users to query information about IPv4/IPv6 addresses. If a domain name is sent, Unalix will try to resolve the IPv4 address first and, if it fails, it will try to resolve the IPv6 address.' --parse_mode 'markdown'
+		elif [[ "$message_text" =~ ^(\!|/)(i|I)(p|P).+$ ]]; then
+			UserQuery=$(echo "$message_text" | sed -r 's/^(\!|\/)(i|I)(p|P)\s+//g' | GetHostname) && GetPunycode --from-user-query && SetFilenameVariables && CheckUserQuery || { SendErrorMessage; }; exit
+		elif [[ "$message_text" =~ ^(\!|/)(h|H)(e|E)(a|A)(d|D)$ ]]; then
+			BotCommand_head --send-usage
+		elif [[ "$message_text" =~ ^(\!|/)(h|H)(e|E)(a|A)(d|D).+ ]]; then
+			URL=$(echo "$message_text" | sed -r 's/^(\!|\/)(h|H)(e|E)(a|A)(d|D)\s+//g') && URL=$(DecodeText "$URL") && Domain=$(echo "$URL" | GetHostname) && GetPunycode --from-variable && BotCommand_head --make-request || { SendErrorMessage; }; exit
 		elif [ "$message_document_mime_type" = 'text/plain' ]; then
 			GetFromFile='true' && SetFilenameVariables && ProcessLinks
 		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L)$ ]]; then
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/getfromurl <url_here>`\nor\n`!getfromurl <url_here>`\n\n*Example:*\n\n`/getfromurl http://example.org/links.txt,http://example.com/urls.html`\nor\n`!getfromurl http://example.org/links.txt,http://example.com/urls.html`\n\n*Description:*\n\nUnalix will obtain all http/https links contained in the URLs and process them in a batch operation.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/getfromurl <url_or_link_here>`\nor\n`!getfromurl <url_or_link_here>`\n\n*Example:*\n\n`/getfromurl http://example.org/links.txt`\nor\n`!getfromurl http://example.org/links.txt`\n\n*Description:*\n\nUnalix will download the contents of these `<urls>`, obtain all the http/https links from the page and process them in a batch operation. The results will be sent in a txt file (if the final result has more than 1 link) or via message (if the final result has only 1 link).' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L).+$ ]]; then
 			GetFromURL='true' && SetFilenameVariables && ProcessLinks
 		elif [[ "$message_text" =~ .*(H|h)(T|t)(T|t)(P|p)(S|s)?(://|%3A%2F%2F|%3a%2f%2f)[^\ $(printf '\n')$(printf '\t')\"]* ]]; then
 			SetFilenameVariables && ProcessLinks
 		elif [ "$message_text" ]; then
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https:// (case-insensitive)`.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send me any link that starts with `http://` or `https://` (case-insensitive).' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 		else
 			exit '0'
 		fi
