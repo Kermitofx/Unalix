@@ -393,8 +393,8 @@ MessageError()
 							"${err_param:--}" 					\
 							"${err_message:-$_ERR_UNKNOWN_}" 	1>&2 
 
-	# Finaliza script/thread em caso de erro interno, caso contrário retorna 1
-	${assert:-false} && exit 1 || return 1
+	return '1'
+
 }
 
 CheckArgType()
