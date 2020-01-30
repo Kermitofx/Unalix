@@ -18,11 +18,11 @@ MakeNetworkRequest(){
 SetupUnalix(){
 
 	rm -f "$HOME/Unalix/Administrators/placeholder" "$HOME/Unalix/Reports/placeholder"
-	[ -d "$HOME/Unalix/Rules" ] || { mkdir -p "$HOME/Unalix/Rules"; }
-	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -p "$HOME/Unalix/TempFiles"; }
-	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -p "$HOME/Unalix/PatternDetection"; }
-	[ -d "$HOME/Unalix/Administrators" ] || { mkdir -p "$HOME/Unalix/Administrators"; }
-	[ -d "$HOME/Unalix/Reports" ] || { mkdir -p "$HOME/Unalix/Reports"; }
+	[ -d "$HOME/Unalix/Rules" ] || { mkdir -m '700' -p "$HOME/Unalix/Rules"; }
+	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -m '700'  -p "$HOME/Unalix/TempFiles"; }
+	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -m '700'  -p "$HOME/Unalix/PatternDetection"; }
+	[ -d "$HOME/Unalix/Administrators" ] || { mkdir -m '700'  -p "$HOME/Unalix/Administrators"; }
+	[ -d "$HOME/Unalix/Reports" ] || { mkdir -m '700'  -p "$HOME/Unalix/Reports"; }
 	
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
 	source "$HOME/Unalix/Settings/Settings.txt" || { echo -e '\033[0;31mAn error occurred while trying to import the settings file!\033[0m'; exit; }
@@ -38,19 +38,28 @@ SetupUnalix(){
 		else
 			DoHOptions="--doh-url $DoH"
 		fi
+	else
+		unset 'DoHOptions'
 	fi
 	
 	# Check if "$TorTraffic" is set to "true"
 	[ "$TorTraffic" = 'true' ] && Socks5='--socks5 127.0.0.1:9050' || { unset 'UseSocks5'; }
 
 	# Check if "$DisableIPv4" is set to "true"
-	[ "$DisableIPv4" = 'true' ] && NetworkProtocol='--ipv6' || { unset 'NetworkProtocol'; }
-	
+	if [ "$DisableIPv4" = 'true' ]; then
+		NetworkProtocol='--ipv6'
 	# Check if "$DisableIPv6" is set to "true"
-	[ "$DisableIPv6" = 'true' ] && NetworkProtocol='--ipv4' || { unset 'NetworkProtocol'; }
+	elif [ "$DisableIPv6" = 'true' ]; then
+		NetworkProtocol='--ipv4'
+	else
+		unset 'NetworkProtocol'
+	fi
 
 	# Check if "$ConnectionTimeout" is a valid value
 	[[ "$ConnectionTimeout" =~ [0-9]+ ]] || { ConnectionTimeout='25'; }
+
+	# Check if "$SimultaneouslyOperations" is a valid value
+	[ "$SimultaneouslyOperations" = 'true' ] && Simultaneously='true' || { unset 'Simultaneously'; }
 
 	# Check if the package "idn" is installed
 	if [[ "$(idn 'i❤️.ws')" != 'xn--i-7iq.ws' ]]; then
@@ -203,17 +212,27 @@ DetectPatterns(){
 # Set filename variables
 SetFilenameVariables(){
 
-	rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename" "$DNSAnswerFilename" "$IPAddressFilename"
-	OriginalLinksFilename="$HOME/Unalix/TempFiles/OriginalLinks-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	EndResults="$HOME/Unalix/TempFiles/EndResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	CleanedURLs="$HOME/Unalix/TempFiles/CleanedURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	EndRegex="$HOME/Unalix/TempFiles/EndRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	LinksFilename="$HOME/Unalix/TempFiles/Links-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	GetFromURLsFilename="$HOME/Unalix/TempFiles/GetFromURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-	DNSAnswerFilename="$HOME/Unalix/TempFiles/Resolved-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
-	IPAddressFilename="$HOME/Unalix/TempFiles/IPAddress-$(tr -dc A-Za-z0-9_ < /dev/urandom | head -c 10).txt"
+	if [ "$1" = '--ip-query' ]; then
+		rm -f "$DNSAnswerFilename" "$IPAddressFilename"
+		DNSAnswerFilename="$HOME/Unalix/TempFiles/Resolved-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		IPAddressFilename="$HOME/Unalix/TempFiles/IPAddress-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	elif [ "$1" = '--simultaneously' ]; then
+		SimultaneouslyEndResult="$SimultaneouslyRequestsDirectory/EndResult-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		SpecialEndRegex="$SimultaneouslyRequestsDirectory/SpecialRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		EndRegex="$SimultaneouslyRequestsDirectory/EndRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		TrashURLFilename="$SimultaneouslyRequestsDirectory/TrashURL-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		RequestRunning="$SimultaneouslyRequestsDirectory/RequestRunning-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	else
+		rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename"
+		OriginalLinksFilename="$HOME/Unalix/TempFiles/OriginalLinks-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		EndResults="$HOME/Unalix/TempFiles/EndResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		CleanedURLs="$HOME/Unalix/TempFiles/CleanedURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		SpecialEndRegex="$HOME/Unalix/TempFiles/SpecialRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		EndRegex="$HOME/Unalix/TempFiles/EndRegex-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		TrashURLFilename="$HOME/Unalix/TempFiles/TrashURL-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		LinksFilename="$HOME/Unalix/TempFiles/Links-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		GetFromURLsFilename="$HOME/Unalix/TempFiles/GetFromURLs-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+	fi
 
 }
 
@@ -238,7 +257,12 @@ GetEndResults(){
 	if [ "$BatchMode" != 'true' ]; then
 		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus --stop-sending && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' --disable_web_page_preview 'true' || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
 	else
-		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && URL=$(echo "$URL" | sed 's/\//\\\//g; s/&/\\&/g') && sed -ri "s/\s\(\*\)$/ > $URL/g" "$EndResults" || { sed -ri "s/\s\(\*\)$/ > Could not process this link/g" "$EndResults"; }
+		if [ "$Simultaneously" != 'true' ]; then
+			[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && URL=$(echo "$URL" | sed 's/\//\\\//g; s/&/\\&/g') && sed -ri "s/\s\(\*\)$/ > $URL/g" "$EndResults" || { sed -ri "s/\s\(\*\)$/ > Could not process this link/g" "$EndResults"; }
+		else
+			[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && URL=$(echo "$URL" | sed 's/\//\\\//g; s/&/\\&/g') && sed -ri "s/\s\(\*\)$/ > $URL/g" "$SimultaneouslyEndResult" || { sed -ri "s/\s\(\*\)$/ > Could not process this link/g" "$SimultaneouslyEndResult"; }
+			rm -f "$RequestRunning"
+		fi
 	fi
 
 }
@@ -260,7 +284,7 @@ MakeURLCompatible(){
 cleanup(){
 
 	TypingStatus --stop-sending
-	rm -f "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename" "$DNSAnswerFilename" "$IPAddressFilename"
+	rm -rf "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename" "$DNSAnswerFilename" "$IPAddressFilename" "$SimultaneouslyRequestsDirectory"
 	exit '0'
 
 }
@@ -361,16 +385,16 @@ GenerateFirefox(){
 
 	# Firefox on Windows
 	if [ "$SystemSelection" = '0' ]; then
-		UserAgent="Mozilla/5.0 (Windows ${WindowsVersions[$(shuf -i 0-25 --random-source '/dev/urandom' | head -c '2')]}; WOW${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0 Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
+		UserAgent="Mozilla/5.0 (Windows ${WindowsVersions[$(shuf -i 0-25 --random-source '/dev/urandom' | head -c '2')]}; WOW${SystemArchitectures[$(tr -dc 0-1 < '/dev/urandom' | head -c '1')]}; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '0-9' < '/dev/urandom' | head -c '8') Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
 	# Firefox on macOS
 	elif [ "$SystemSelection" = '1' ]; then
-		UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X ${macOS_Versions[$(shuf -i 0-17 --random-source '/dev/urandom' | head -c '2')]}; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0 Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
+		UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X ${macOS_Versions[$(shuf -i 0-17 --random-source '/dev/urandom' | head -c '2')]}; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '0-9' < '/dev/urandom' | head -c '8') Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
 	# Firefox on Linux
 	elif [ "$SystemSelection" = '2' ]; then
-		UserAgent="Mozilla/5.0 (X11; Linux i586; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0 Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
+		UserAgent="Mozilla/5.0 (X11; Linux i586; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '0-9' < '/dev/urandom' | head -c '8') Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
 	# Firefox on Android
 	elif [ "$SystemSelection" = '3' ]; then
-		UserAgent="Mozilla/5.0 (Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]}; Mobile; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0 Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
+		UserAgent="Mozilla/5.0 (Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]}; Mobile; rv:$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0) Gecko/$(tr -dc '0-9' < '/dev/urandom' | head -c '8') Firefox/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0"
 	# Firefox on iOS
 	elif [ "$SystemSelection" = '4' ]; then
 		UserAgent="Mozilla/5.0 (iPhone; CPU iPhone OS ${iOSVersions[$(shuf -i 0-10 --random-source '/dev/urandom' | head -c '2')]} like Mac OS X) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '0-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) FxiOS/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0 Mobile/$(tr -dc A-Z1-9 < '/dev/urandom' | head -c '5') Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '0-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '2')"
@@ -467,13 +491,13 @@ GenerateGeneric(){
 	# OkHttp on generic system
 	elif [ "$Selection" = '1' ]; then
 		UserAgent="okhttp/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '2').$(tr -dc '0-9' < '/dev/urandom' | head -c '1')"
-	# Generic web view on Android
+	# Generic WebView on Android
 	elif [ "$Selection" = '2' ]; then
 		UserAgent="(Linux; U; Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]}; Cronet/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2'))"
 	# UptimeRobot on generic system (bot)
 	elif [ "$Selection" = '3' ]; then
 		UserAgent="Mozilla/$(tr -dc '4-5' < '/dev/urandom' | head -c '1').0+(compatible; UptimeRobot/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1'); http://www.uptimerobot.com/)"
-	# Zgrab on generic system (bot?)
+	# Zgrab on generic system
 	elif [ "$Selection" = '4' ]; then
 		UserAgent="Mozilla/$(tr -dc '4-5' < '/dev/urandom' | head -c '1').0 zgrab/0.x"
 	# Telegram RSS (bot)
@@ -640,12 +664,11 @@ ProcessLinks(){
 		echo -e "$message_text" | ParseText > "$GetFromURLsFilename"
 		for Links in $(cat "$GetFromURLsFilename")
 		do
-			GetLinksContent | head -c '5242880' | ParseText >> "$LinksFilename"
+			GetLinksContent | ParseText >> "$LinksFilename"
 		done
-		rm -f "$GetFromURLsFilename" && unset 'GetFromURL'
+		[[ $(wc -c < "$LinksFilename") = '0' ]] && SendErrorMessage && cleanup
 	elif [ "$GetFromFile" = 'true' ]; then
 		if [ "$message_document_file_size" -gt '20000000' ]; then
-			unset 'GetFromFile'
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This file exceeds the maximum limit of 20 MB. Try sending a smaller file.' || { SendErrorMessage; }; cleanup
 		else
 			DownloadFilePath=$(getFile --file_id "$message_document_file_id" | grep -Eo 'documents/.+')
@@ -657,18 +680,37 @@ ProcessLinks(){
 
 	if [[ $(wc -l < "$LinksFilename") -gt '1' ]]; then
 
-		TypingStatus --start-sending && BatchMode='true'
-		mv "$LinksFilename" "$OriginalLinksFilename" && rm -f "$LinksFilename" || { SendErrorMessage; }
+		TypingStatus --start-sending && BatchMode='true' && mv "$LinksFilename" "$OriginalLinksFilename" || { SendErrorMessage; }
 
 		for Domain in $(GetHostname < "$OriginalLinksFilename")
 		do
 			GetPunycode --from-file
 		done
 
-		for URL in $(cat "$OriginalLinksFilename"); do
-			echo "$URL (*)" >> "$EndResults"
-			ParseTrackingParameters && GetEndResults
-		done
+		if [ "$Simultaneously" != 'true' ]; then
+			for URL in $(cat "$OriginalLinksFilename"); do
+				echo "$URL (*)" >> "$EndResults"
+				ParseTrackingParameters && GetEndResults
+			done
+		else
+			SimultaneouslyRequestsDirectory="$HOME/Unalix/TempFiles/SimultaneouslyRequestsDirectory-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10)"
+			mkdir -m '700' -p "$SimultaneouslyRequestsDirectory"
+			for URL in $(cat "$OriginalLinksFilename"); do
+				SetFilenameVariables --simultaneously
+				touch "$RequestRunning" && echo "$URL (*)" >> "$SimultaneouslyEndResult"
+				{
+					ParseTrackingParameters && GetEndResults
+				} &
+			done
+			set +f 
+			while [[ $(ls $SimultaneouslyRequestsDirectory/RequestRunning-* 2>/dev/null | wc -c) -gt '0' ]]
+			do
+				true
+			done
+			EndResults="$SimultaneouslyRequestsDirectory/AllResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+			cat "$SimultaneouslyRequestsDirectory"/EndResult-* > "$EndResults"
+			set -f
+		fi
 
 		head -c '50000000' < "$EndResults" > "$CleanedURLs"
 		TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$CleanedURLs" || { SendErrorMessage; }; cleanup
@@ -690,6 +732,7 @@ ProcessLinks(){
 
 }
 
+
 # This function is used to send an error message to the user when an operation returns a negative value.
 SendErrorMessage(){
 
@@ -707,7 +750,7 @@ DownloadFile(){
 # This function is used to obtain the contents of the URLs sent using the command "/getfromurl"
 GetLinksContent(){
 
-	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$Links" --user-agent "$UserAgent" $DoHOptions
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --url "$Links" --user-agent "$UserAgent" $DoHOptions | head -c '5242880'
 
 }
 
@@ -746,7 +789,11 @@ ParseText(){
 # This function is used to obtain the hostname of links
 GetHostname(){
 
-	sed -r 's/^.*:\/\/|\/.*//g; s/:[0-9]{1,5}.*//g' | tr '[:upper:]' '[:lower:]'
+	if [ "$1" = '--keep-port-number' ]; then
+		sed -r 's/^.*:\/\/|\/.*//g' | tr '[:upper:]' '[:lower:]'
+	else
+		sed -r 's/^.*:\/\/|\/.*//g; s/:[0-9]{1,5}.*//g' | tr '[:upper:]' '[:lower:]'
+	fi
 
 }
 
@@ -774,7 +821,7 @@ BotCommand_decodetext(){
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/decodetext <string_or_text_here>`\nor\n`!decodetext <string_or_text_here>`\n\n*Example:*\n\n`/decodetext %25c3%25a3%25c4%2581%25c3%25a5%25c3%25a4`\nor\n`!decodetext %25c3%25a3%25c4%2581%25c3%25a5%25c3%25a4`\n\n*Description:*\n\nThis command allows the user to convert UTF-8 characters to human-readable text.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 	# Decode text
 	elif [ "$1" = '--decode-text' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(echo $message_text | sed -r 's/^(\!|\/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(echo $message_text | sed -r 's/^(\!|\/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g; s/&/%26/g')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
 	else
 		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
@@ -789,7 +836,7 @@ CheckUserQuery(){
 	elif echo "$UserQuery" | grep -Eq '\.i2p$'; then
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Domains related to the I2P network cannot be resolved.' || { SendErrorMessage; }; cleanup
 	elif echo "$UserQuery" | grep -Pq '[0-9a-zA-Z\.-]+\.[a-zA-Z\.]{2,6}'; then
-		TypingStatus --start-sending && MakeDNSTest && ResolveQuery && QueryIP
+		GetPunycode --from-user-query && TypingStatus --start-sending && MakeDNSTest && ResolveQuery && QueryIP
 	elif echo "$UserQuery" | grep -Pq '((?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})'; then
 		TypingStatus --start-sending && IPAddress="$UserQuery" && QueryIP
 	else
@@ -832,7 +879,7 @@ CheckIfReachable(){
 MakeRequest(){
 
 	if [ "$2" = '--resolve' ]; then
-		timeout -s '9' "$ConnectionTimeout" curl -LNkBf -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$DNSResolver$1" -o "$DNSAnswerFilename"
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$DNSResolver$1&do=false&cd=false" -o "$DNSAnswerFilename"
 	else
 		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 --user-agent "$UserAgent" $DoHOptions --url "$API" -o "$IPAddressFilename"
 	fi
@@ -852,15 +899,17 @@ ResolveQuery(){
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to resolve the domain name.' || { SendErrorMessage; }; cleanup
 	fi
 
+	echo "$IPAddress"
+
 }
 
 # This function is used to verify that the IP address returned by the DNS resolver is a valid IPv4 address.
 IsPv4(){
 
 	if [ "$1" != '--set-variable' ]; then
-		grep -Pq '\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b' "$DNSAnswerFilename"
+		sed -r 's/edns_client_subnet.*//g' < "$DNSAnswerFilename" | grep -Pq '\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
 	else
-		IPAddress=$(grep -Po '\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b' "$DNSAnswerFilename" | head -n '1')
+		IPAddress=$(sed -r 's/edns_client_subnet.*//g' < "$DNSAnswerFilename" | grep -Po '\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b' | head -n '1')
 	fi
 
 }
@@ -869,9 +918,9 @@ IsPv4(){
 IsPv6(){
 
 	if [ "$1" != '--set-variable' ]; then
-		grep -Pq '(?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}' "$DNSAnswerFilename"
+		sed -r 's/edns_client_subnet.*//g' < "$DNSAnswerFilename" | grep -Pq '(?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}'
 	else
-		IPAddress=$(grep -Po '(?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}' "$DNSAnswerFilename" | head -n '1')
+		IPAddress=$(sed -r 's/edns_client_subnet.*//g' < "$DNSAnswerFilename" | grep -Po '(?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}' | head -n '1')
 	fi
 
 }
@@ -1021,17 +1070,22 @@ while true; do
 		elif [[ "$message_text" =~ ^(\!|/)(i|I)(p|P)$ ]]; then
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/ip <ipv4_or_ipv6_address_here>`\nor\n`!ip <ipv4_or_ipv6_address_here>`\n\n*Example:*\n\n`/ip uncensored.any.dns.nixnet.xyz`\nor\n`!ip uncensored.any.dns.nixnet.xyz`\n\n*Description:*\n\nThis command allows users to query information about IPv4/IPv6 addresses. If a domain name is sent, Unalix will try to resolve the IPv4 address first and, if it fails, it will try to resolve the IPv6 address.' --parse_mode 'markdown'
 		elif [[ "$message_text" =~ ^(\!|/)(i|I)(p|P).+$ ]]; then
-			UserQuery=$(echo "$message_text" | sed -r 's/^(\!|\/)(i|I)(p|P)\s+//g' | GetHostname) && GetPunycode --from-user-query && SetFilenameVariables && CheckUserQuery || { SendErrorMessage; }; exit
+			UserQuery=$(echo "$message_text" | sed -r 's/^(\!|\/)(i|I)(p|P)\s+//g' | GetHostname --keep-port-number) && SetFilenameVariables --ip-query && CheckUserQuery || { SendErrorMessage; }; exit
+		elif [[ "$message_text" =~ ^(\!|/)(p|P)(u|U)(n|N)(y|Y)(c|C)(o|O)(d|D)(e|E)$ ]]; then
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/punycode <domain_name_here>`\nor\n`!punycode <domain_name_here>`\n\n*Example:*\n\n`/punycode президент.рф`\nor\n`!punycode президент.рф`\n\n*Description:*\n\nUse this command to obtain the valid punycode of domain names that have letters in non-Latin alphabet and/or that have emojis.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		elif [[ "$message_text" =~ ^(\!|/)(p|P)(u|U)(n|N)(y|Y)(c|C)(o|O)(d|D)(e|E).+$ ]]; then
+			UserQuery=$(echo "$message_text" | sed -r 's/^(\!|\/)(p|P)(u|U)(n|N)(y|Y)(c|C)(o|O)(d|D)(e|E)\s+//g' | GetHostname) && GetPunycode --from-user-query
+			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$UserQuery\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
 		elif [[ "$message_text" =~ ^(\!|/)(h|H)(e|E)(a|A)(d|D)$ ]]; then
 			BotCommand_head --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(h|H)(e|E)(a|A)(d|D).+ ]]; then
 			URL=$(echo "$message_text" | sed -r 's/^(\!|\/)(h|H)(e|E)(a|A)(d|D)\s+//g') && URL=$(DecodeText "$URL") && Domain=$(echo "$URL" | GetHostname) && GetPunycode --from-variable && BotCommand_head --make-request || { SendErrorMessage; }; exit
 		elif [ "$message_document_mime_type" = 'text/plain' ]; then
-			GetFromFile='true' && SetFilenameVariables && ProcessLinks
+			SetFilenameVariables && GetFromFile='true' && ProcessLinks
 		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L)$ ]]; then
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/getfromurl <url_or_link_here>`\nor\n`!getfromurl <url_or_link_here>`\n\n*Example:*\n\n`/getfromurl http://example.org/links.txt`\nor\n`!getfromurl http://example.org/links.txt`\n\n*Description:*\n\nUnalix will download the contents of these `<urls>`, obtain all the http/https links from the page and process them in a batch operation. The results will be sent in a txt file (if the final result has more than 1 link) or via message (if the final result has only 1 link).' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 		elif [[ "$message_text" =~ ^(\!|/)(g|G)(e|E)(t|T)(f|F)(r|R)(o|O)(m|M)(u|U)(r|R)(l|L).+$ ]]; then
-			GetFromURL='true' && SetFilenameVariables && ProcessLinks
+			SetFilenameVariables && GetFromURL='true' && ProcessLinks
 		elif [[ "$message_text" =~ .*(H|h)(T|t)(T|t)(P|p)(S|s)?(://|%3A%2F%2F|%3a%2f%2f)[^\ $(printf '\n')$(printf '\t')\"]* ]]; then
 			SetFilenameVariables && ProcessLinks
 		elif [ "$message_text" ]; then

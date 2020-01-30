@@ -11,6 +11,8 @@ StatusChatID=''
 # DNS-over-HTTPS will be used by default on all requests. If you prefer, change it below:
 # Example: DoH='https://cloudflare-dns.com/dns-query'
 DoH='https://doh.dnswarden.com:443/uncensored'
+# Remember to use independent DNS services that do not collect/store information about domain queries and/or user IPs.
+# To see a list of privacy-friendly DNS resolvers, take a look at http://privacytools.io/providers/dns.
 
 # Will all bot traffic go through the Tor network? If yes, set the variable below to "true"
 # Note that a Socks5 proxy and DNS-over-HTTPS cannot be used together.
@@ -23,10 +25,15 @@ DisableIPv4='false'
 # Do you want the bot to use only the IPv4 network? If yes, set the variable below to "true"
 DisableIPv6='true'
 
-# Do you want Unalix to generate a random user agent before each request? If yes, set the variable below to "true"
+# Do you want Unalix to generate a random user agent before each request? If yes, set the variable below to "true".
 # Note that user agent generation can increase bot response time by about 1 to 3 seconds, as it will always be necessary to generate a new user agent for each request.
 # If the variable below is set to "false", Unalix will use a predefined user agent for each request.
 GenerateUserAgents='true'
 
 # This is the timeout (in seconds) of requests. If this limit has been reached and the request has not yet been completed, it will be terminated.
 ConnectionTimeout='25'
+
+# Will the bot process links simultaneously? If so, set the variable below to "true".
+SimultaneouslyOperations='false'
+# Note that, depending on the number of links to be processed, background operations can make your machine slow and/or unresponsive.
+# If the value is set to "false", the bot will process a single link at a time.
