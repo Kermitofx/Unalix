@@ -21,7 +21,6 @@ SetupUnalix(){
 	[ -d "$HOME/Unalix/Rules" ] || { mkdir -m '700' -p "$HOME/Unalix/Rules"; }
 	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -m '700'  -p "$HOME/Unalix/TempFiles"; }
 	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -m '700'  -p "$HOME/Unalix/PatternDetection"; }
-	[ -d "$HOME/Unalix/Administrators" ] || { mkdir -m '700'  -p "$HOME/Unalix/Administrators"; }
 	[ -d "$HOME/Unalix/Reports" ] || { mkdir -m '700'  -p "$HOME/Unalix/Reports"; }
 	
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
@@ -540,24 +539,6 @@ SolveURLIssues(){
 		return '0'
 	fi
 
-
-}
-
-# Send a message with the text "Unalix is up" or "Unalix is down" when the bot is started (bash "$HOME/Unalix/StartUnalix.sh") or stopped (CTRL + C) from the terminal
-SendBotStatus(){
-
-	if [[ "$StatusChatID" =~ (-?[0-9]+|@?[A-Za-z0-9]{5,32}) ]]; then
-		if [ "$1" = '--started' ]; then
-			sendMessage --chat_id "$StatusChatID" --text 'Unalix is up.' 1 > '/dev/null' 2 > '/dev/null' || { echo -e '\033[0;31mAn error occurred while trying to send the status!\033[0m'; return '1'; }
-		elif [ "$1" = '--stopped' ]; then
-			sendMessage --chat_id "$StatusChatID" --text 'Unalix is down.' 1 > '/dev/null' 2 > '/dev/null' || { echo -e '\033[0;31mAn error occurred while trying to send the status!\033[0m'; return '1'; }
-		else
-			echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
-		fi
-	else
-		echo -e '\033[0;31m"$StatusChatID" contains a invalid value!\033[0m'; return '1'
-	fi
-
 }
 
 # This function is used to send the action "typing" to the chat of the user who sent a link. This status will be sent while Unalix is processing a link
@@ -573,84 +554,6 @@ TypingStatus(){
 	# The loop will be broken when the $MessageSent file is deleted.
 	elif [ "$1" = '--stop-sending' ]; then
 		rm -f "$MessageSent"
-	else
-		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
-	fi
-
-}
-
-# The command "/report" allows users to send messages directly to the bot administrators. # This is useful for users who want to report bugs or give feedback.
-# To prevent spam, users cannot submit new reports if a saved report already exists associated with their user ID
-BotCommand_report(){
-
-	# Send basic command usage information
-	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/report <your_message_here>`\nor\n`!report <your_message_here>`\n\n*Example:*\n\n`/report I'\''m just getting in touch to say that this bot is really cool!`\nor\n`!report I'\''m just getting in touch to say that this bot is really cool!`\n\n*Description:*\n\nUse this command to send a direct message to bot administrators. If you prefer, enter your email or username so that we can contact you if necessary.' --parse_mode 'markdown' || { SendErrorMessage; }
-	# Try to store the submitted report
-	elif [ "$1" = '--store-user-report' ]; then
-		if [ -f "$HOME/Unalix/Reports/$message_chat_id" ]; then
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "You have previously submitted a report. Wait for it to be viewed by an administrator or delete it using \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown'
-		else
-			echo -e "$message_text" | sed -r 's/^(\!|\/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)\s*//g' > "$HOME/Unalix/Reports/$message_chat_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "Your report has been submitted. If you want to delete your submitted report, send \`/delete_report_$message_chat_id\` or \`!delete_report_$message_chat_id\`." --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred when trying to submit your report.'; }
-			for Administrators in $(cd "$HOME/Unalix/Administrators" && ls)
-			do
-				sendMessage --chat_id "$Administrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`$(head -c '3800' < "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown' || { sendMessage --chat_id "$BotAdministrators" --text "*An user has submitted the following report:*\n\n*User:*\n\n*Name:* \`$message_chat_first_name\`\n*Username:* \`$message_chat_username\`\n*Language:* \`$message_from_language_code\`\n*User ID:* \`$message_from_id\`\n*Message ID:* \`$message_message_id\`\n\n*Report:*\n\n\`The report was stored in "$HOME/Unalix/Reports/$message_chat_id")\`" --parse_mode 'markdown'; }
-			done
-		fi
-	else
-		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
-	fi
-
-}
-
-# The command "/cmd" is used to execute commands inside the terminal where Unalix is running
-# Only administrators who have their user IDs saved in "$HOME/Unalix/Administrators" can use this command inside Telegram
-BotCommand_cmd(){
-
-	# Send basic command usage information
-	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/cmd <command> <parameter>`\nor\n`!cmd <command> <parameter>`\n\n*Example:*\n\n`/cmd neofetch --stdout %26%26 echo "$?"`\nor\n`!cmd neofetch --stdout %26%26 echo "$?"`\n\n*Description:*\n\nThis command allows a user to execute bash commands inside the terminal on which Unalix is running. Only administrators are authorized to perform this operation.' --parse_mode 'markdown' || { SendErrorMessage; }
-	# Try to run the command on terminal
-	elif [ "$1" = '--run-on-terminal' ]; then
-		if [ -f "$HOME/Unalix/Administrators/$message_chat_id" ]; then
-			CommandOutput="$HOME/Unalix/TempFiles/Output-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
-			CommandToRun=$(echo "$message_text" | sed -r 's/^(\!|\/)(C|c)(M|m)(D|d)\s*//g; s/\\*//g; s/"\""/'\''/g')
-			timeout -s '9' "$ConnectionTimeout" bash -c "$CommandToRun" 2>>"$CommandOutput" 1>>"$CommandOutput"; ExitStatus="$?"
-			[[ $(wc -w < "$CommandOutput") != '0' ]] && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*OUTPUT (stdout and stderr):*\n\n\`$(cat $CommandOutput)\`" --parse_mode 'markdown' || { sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The command was executed, but no standard output (stdout) or standard error (stderr) could be captured. The exit status code was \`$ExitStatus\`." --parse_mode 'markdown'; }; cleanup
-		else
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You are not an administrator of this bot, and therefore you are not authorized to execute commands through the terminal.' || { SendErrorMessage; }
-		fi
-	else
-		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
-	fi
-
-}
-
-# The command "/delete_report" allows users to delete a report that was previously submitted.
-# Bot administrators have privileges, so they can delete reports submitted by other users
-BotCommand_del_report(){
-
-	# Send basic command usage information
-	if [ "$1" = '--send-usage' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Usage:*\n\n\`/delete_report_<your_user_id>\`\nor\n\`!delete_report_<your_user_id>\`\n\n*Example:*\n\n\`/delete_report_$message_from_id\`\nor\n\`!delete_report_$message_from_id\`\n\n*Description:*\n\nThis command allows a user to delete a previously sent report. Common users cannot delete reports with an ID other than their own." --parse_mode 'markdown' || { SendErrorMessage; }
-	# Try to delete the report
-	elif [ "$1" = '--delete-user-report' ]; then
-		DeletionRequestID=$(echo "$message_text" | sed -r 's/^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_//g')
-		if [ "$DeletionRequestID" = "$message_from_id" ]; then
-			if [ -f "$HOME/Unalix/Reports/$message_from_id" ]; then
-				rm -f "$HOME/Unalix/Reports/$message_from_id" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your report has been successfully deleted.' || { SendErrorMessage; }
-			else
-				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have no saved reports.' || { SendErrorMessage; }
-			fi
-		elif [ -f "$HOME/Unalix/Administrators/$message_from_id" ]; then
-			if [ -f "$HOME/Unalix/Reports/$DeletionRequestID" ]; then
-				rm -f "$HOME/Unalix/Reports/$DeletionRequestID" && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'This report has been successfully deleted.' || { SendErrorMessage; }
-			else
-				sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "There are no reports associated with this user ID (\`$DeletionRequestID\`)." --parse_mode 'markdown' || { SendErrorMessage; }
-			fi
-		else
-			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'You have attempted to delete a report that does not belong to your user ID. Only bot administrators can perform this action.' || { SendErrorMessage; }
-		fi
 	else
 		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
@@ -1023,11 +926,8 @@ echo -e '\033[0;33mImporting functions..\033[0m.' && source "$HOME/Unalix/Depend
 # Start the bot
 echo -e '\033[0;33mStarting bot...\033[0m' && init --token "$BotToken" 1>/dev/null; echo -e '\033[0;32mSuccess!\033[0m'
 
-# Send "Unalix is up" to "$StatusChatID"
-echo -e '\033[0;33mTrying to send bot status to the chat...\033[0m' && SendBotStatus --started && echo -e '\033[0;32mSuccess!\033[0m'
-
 # Trap signals and other events
-trap "echo -e '\033[0;33mTrying to send bot status to the chat...\033[0m' && SendBotStatus --stopped && echo -e '\033[0;32mSuccess!\033[0m' ; cleanup" 'INT' 'TERM'
+trap "cleanup" 'INT' 'TERM'
 
 echo -e '\033[0;33mGetting updates from the API...\033[0m'
 
@@ -1047,18 +947,6 @@ while true; do
 
 		if [[ "$message_text" =~ ^(\!|/)(S|s)(T|t)(A|a)(R|r)(T|t)$ ]]; then
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Send via a message or inside a txt file the links you want to be "clean". Unalix will begin processing your request and within a few seconds (or minutes, depending on the number of links), it will send you the final result.\n\nUnalix is also able to process links from web pages. To do this, submit the URLs using the `/getfromurl` command. Unalix will download the entire contents of these URLs, obtain all the `http`/`https` links and process them in a batch operation.\n\nIn order to be able to identify the links contained in the message, txt file or web page, they must be in the following format:\n\n• It must start with `http://` or `https://` (case-insensitive)\n• It must have a domain name in Latin (`example.org`) or non-Latin (`президент.рф`) alphabet. Links with emoji domain name (`i❤️.ws`) are also supported.\n\n[Testing the bot with a link from an Amazon product](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example.png)\n\nIf you want Unalix to process multiple links from a single message, txt file or web page, separate them by a whitespace character (`\s`), tab (`\\t`), comma (`,`) or a new line (`\\n`).\n\n_Note: If you submit more than 1 link, the results will be sent in a txt file._\n\n[Testing the bot with multiple links in a single message](http://raw.githubusercontent.com/SnwMds/Unalix/master/Documentation/images/Example2.png)\n\nNote that Unalix can also identify links in forwarded messages and file captions.\n\nFor more information about Unalix, take a look at our [GitHub repository](http://github.com/SnwMds/Unalix) (Yes, it'\''s fully open source!).' --parse_mode 'markdown' --disable_web_page_preview 'true' || { SendErrorMessage; }; cleanup
-		elif [[ "$message_text" =~ ^(\!|/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)$ ]]; then
-			BotCommand_report --send-usage
-		elif [[ "$message_text" =~ ^(\!|/)(R|r)(E|e)(P|p)(O|o)(R|r)(T|t).+$ ]]; then
-			BotCommand_report --store-user-report
-		elif [[ "$message_text" =~ ^(\!|/)(C|c)(M|m)(D|d)$ ]]; then
-			BotCommand_cmd --send-usage
-		elif [[ "$message_text" =~ ^(\!|/)(C|c)(M|m)(D|d).+$ ]]; then
-			BotCommand_cmd --run-on-terminal
-		elif [[ "$message_text" =~ ^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)$ ]]; then
-			BotCommand_del_report --send-usage
-		elif [[ "$message_text" =~ ^(\!|/)(D|d)(E|e)(L|l)(E|e)(T|t)(E|e)_(R|r)(E|e)(P|p)(O|o)(R|r)(T|t)_.{6,}$ ]]; then
-			BotCommand_del_report --delete-user-report
 		elif [[ "$message_text" =~ ^(\!|/)(e|E)(n|N)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)$ ]]; then
 			BotCommand_encodetext --send-usage
 		elif [[ "$message_text" =~ ^(\!|/)(e|E)(n|N)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T).+$ ]]; then
