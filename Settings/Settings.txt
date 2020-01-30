@@ -2,15 +2,10 @@
 # Example: BotToken='859220722:AAFLuvMxwJu0aGDjVGnyXoxHOWUPFNzjuzQ'
 BotToken=''
 
-# This is the chat to which Unalix will send a message whenever it is started and/or stopped.
-# Enter channel, group or private chat ID inside the quotes below:
-# Example: StatusChatID='-1001344450358' or StatusChatID='@UnalixLogs'
-StatusChatID=''
-
 # This is the DNS resolver that will be used to resolve all domain names accessed by the bot.
 # DNS-over-HTTPS will be used by default on all requests. If you prefer, change it below:
 # Example: DoH='https://cloudflare-dns.com/dns-query'
-DoH='https://doh.dnswarden.com:443/uncensored'
+DoH='https://1.1.1.1:443/dns-query'
 # Remember to use independent DNS services that do not collect/store information about domain queries and/or user IPs.
 # To see a list of privacy-friendly DNS resolvers, take a look at http://privacytools.io/providers/dns.
 
@@ -28,7 +23,7 @@ DisableIPv6='true'
 # Do you want Unalix to generate a random user agent before each request? If yes, set the variable below to "true".
 # Note that user agent generation can increase bot response time by about 1 to 3 seconds, as it will always be necessary to generate a new user agent for each request.
 # If the variable below is set to "false", Unalix will use a predefined user agent for each request.
-GenerateUserAgents='true'
+GenerateUserAgents='false'
 
 # This is the timeout (in seconds) of requests. If this limit has been reached and the request has not yet been completed, it will be terminated.
 ConnectionTimeout='25'
