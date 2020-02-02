@@ -2,3 +2,5 @@
 s\=[^&]*
 cn\=[^&]*
 ref_url\=[^&]*
+# The rules below were added by Unalix
+original_referer\=[^&]*

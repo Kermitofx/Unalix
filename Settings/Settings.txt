@@ -32,3 +32,9 @@ ConnectionTimeout='25'
 SimultaneouslyOperations='false'
 # Note that, depending on the number of links to be processed, background operations can make your machine slow and/or unresponsive.
 # If the value is set to "false", the bot will process a single link at a time.
+
+# Will cURL use a custom CA certificate store when verifying SSL/TLS connections? If so, set the variable below to "true".
+CurlCustomCertificates='false'
+
+# If the "CurlCustomCertificates" is set to "true", where will the custom CA certificate store be?
+CurlCustomCertificatesPath="$HOME/Unalix/Dependencies/cacert.pem"

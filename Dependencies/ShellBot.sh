@@ -1,6 +1,6 @@
 #!/bin/bash
 
-alias TelegramAPICall='curl --http2 $NetworkProtocol $Socks5 $DoHOptions --user-agent "$UserAgent" --ssl-reqd --no-sessionid --silent --request'
+alias TelegramAPICall='curl $CACertOptions $NetworkProtocol $Socks5 $DoHOptions --user-agent "$UserAgent" --http2 --ssl-reqd --no-sessionid --silent --request'
 
 [[ $_SHELLBOT_SH_ ]] && return 1
 
