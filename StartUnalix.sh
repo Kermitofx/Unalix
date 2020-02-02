@@ -763,8 +763,14 @@ CheckUserQuery(){
 MakeDNSTest(){
 
 	# These are the DNS servers that can be used to resolve domains sent using the "/ip" command.
+	# Cloudflare DNS (Anycast) | http://1.1.1.1
+	if CheckIfReachable 'https://1.1.1.1:443/dns-query?name=gnu.org' --dns; then
+		DNSResolver='https://1.1.1.1:443/dns-query?name='
+	# Cloudflare DNS (Anycast) | http://1.0.0.1
+	elif CheckIfReachable 'https://1.0.0.1:443/dns-query?name=gnu.org' --dns; then
+		DNSResolver='https://1.0.0.1:443/dns-query?name=',
 	# Uncensored DNS (Netherlands) | http://securedns.eu
-	if CheckIfReachable 'https://doh.securedns.eu:443/dns-query?name=gnu.org' --dns; then
+	elif CheckIfReachable 'https://doh.securedns.eu:443/dns-query?name=gnu.org' --dns; then
 		DNSResolver='https://doh.securedns.eu:443/dns-query?name='
 	# Uncensored DNS (Finland) | http://snopyta.org/service/dns
 	elif CheckIfReachable 'https://fi.doh.dns.snopyta.org:443/dns-query?name=gnu.org' --dns; then
@@ -871,8 +877,8 @@ QueryIP(){
 GetPunycode(){
 
 	if [ "$1" != '--from-user-query' ]; then
-		idn "$Domain" 2>&1 1>/dev/null && Punycode=$(idn "$Domain")
-		idn2 "$Domain" 2>&1 1>/dev/null && Punycode=$(idn2 "$Domain")
+		idn "$Domain" 1>/dev/null 2>&1 && Punycode=$(idn "$Domain")
+		idn2 "$Domain" 1>/dev/null 2>&1 && Punycode=$(idn2 "$Domain")
 		if [ "$Punycode" ]; then
 			if [ "$1" = '--from-file' ]; then
 				[ "$Punycode" != "$Domain" ] && sed -i "s/$Domain/$Punycode/g" "$OriginalLinksFilename"
@@ -882,8 +888,8 @@ GetPunycode(){
 			unset 'Punycode'
 		fi
 	else
-		idn "$UserQuery" 2>&1 1>/dev/null && Punycode=$(idn "$UserQuery")
-		idn2 "$UserQuery" 2>&1 1>/dev/null && Punycode=$(idn2 "$UserQuery")
+		idn "$UserQuery" 1>/dev/null 2>&1 && Punycode=$(idn "$UserQuery")
+		idn2 "$UserQuery" 1>/dev/null 2>&1 && Punycode=$(idn2 "$UserQuery")
 		if [ "$Punycode" ]; then
 			[ "$Punycode" != "$UserQuery" ] && UserQuery="$Punycode"
 		fi
