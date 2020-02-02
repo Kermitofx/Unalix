@@ -6,7 +6,7 @@ MakeNetworkRequest(){
 	# If curl cannot access the link for any reason, the value of the "$URL" variable will be considered the "final URL"
 	echo "$URL" > "$TrashURLFilename"
 	# Make request
-	timeout -s '9' "$ConnectionTimeout" curl -LNkB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$URL" | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | ParseText >> "$TrashURLFilename"
+	timeout -s '9' "$ConnectionTimeout" curl -LNkB --raw --head --ignore-content-length --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$URL" | grep -E '^(L|l)(O|o)(C|c)(A|a)(T|t)(I|i)(O|o)(N|n):\s*' | ParseText >> "$TrashURLFilename"
 	# If the URL does not have a valid protocol, set it to http
 	sed -ri 's/^(https?(:\/\/|%3A%2F%2F|%3a%2f%2f))?/http:\/\//g' "$TrashURLFilename"
 	# Set received data
@@ -19,9 +19,9 @@ SetupUnalix(){
 
 	rm -f "$HOME/Unalix/Administrators/placeholder" "$HOME/Unalix/Reports/placeholder"
 	[ -d "$HOME/Unalix/Rules" ] || { mkdir -m '700' -p "$HOME/Unalix/Rules"; }
-	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -m '700'  -p "$HOME/Unalix/TempFiles"; }
-	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -m '700'  -p "$HOME/Unalix/PatternDetection"; }
-	[ -d "$HOME/Unalix/Reports" ] || { mkdir -m '700'  -p "$HOME/Unalix/Reports"; }
+	[ -d "$HOME/Unalix/TempFiles" ] || { mkdir -m '700' -p "$HOME/Unalix/TempFiles"; }
+	[ -d "$HOME/Unalix/PatternDetection" ] || { mkdir -m '700' -p "$HOME/Unalix/PatternDetection"; }
+	[ -d "$HOME/Unalix/Reports" ] || { mkdir -m '700' -p "$HOME/Unalix/Reports"; }
 	
 	# Import all variables from "$HOME/Unalix/Settings/Settings.txt"
 	source "$HOME/Unalix/Settings/Settings.txt" || { echo -e '\033[0;31mAn error occurred while trying to import the settings file!\033[0m'; exit; }
@@ -657,14 +657,14 @@ SendErrorMessage(){
 # This function is used to download txt files
 DownloadFile(){
 
-	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "https://api.telegram.org:443/file/bot$BotToken/$DownloadFilePath"
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "https://api.telegram.org:443/file/bot$BotToken/$DownloadFilePath"
 	
 }
 
 # This function is used to obtain the contents of the URLs sent using the command "/getfromurl"
 GetLinksContent(){
 
-	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$Links" | head -c '5242880'
+	timeout -s '9' "$ConnectionTimeout" curl -LNkZB --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$Links" | head -c '5242880'
 
 }
 
@@ -788,9 +788,9 @@ MakeDNSTest(){
 CheckIfReachable(){
 
 	if [ "$2" = '--dns' ]; then
-		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf -H 'accept: application/dns-json' --no-progress-meter --head --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
+		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf -H 'accept: application/dns-json' --no-progress-meter --head --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
 	else
-		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
+		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
 	fi
 
 }
@@ -799,9 +799,9 @@ CheckIfReachable(){
 MakeRequest(){
 
 	if [ "$2" = '--resolve' ]; then
-		timeout -s '9' "$ConnectionTimeout" curl -LNkBf -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$DNSResolver$1&do=false&cd=false" -o "$DNSAnswerFilename"
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --request 'GET' --user-agent "$UserAgent" --url "$DNSResolver$1&do=false&cd=false" -o "$DNSAnswerFilename"
 	else
-		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$API" -o "$IPAddressFilename"
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$API" -o "$IPAddressFilename"
 	fi
 
 }
@@ -921,14 +921,14 @@ BotCommand_head(){
 # This function is used to make HEAD requests to websites/IP addresses sent through the command "/head"
 MakeHeadRequest(){
 
-	timeout -s '9' "25" curl --silent -NkBL --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive --proto-default 'http' --proto-redir '-all,http,https' $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --user-agent "$UserAgent" --url "$URL" | sed -r 's/^(HTTP\/[0-9](\.[0-9])?)/Protocol: \1\n/g; s/^\s([0-9]{3}(\s\w)?)\b/Status: \1/gm; s/^([A-Za-z0-9-]+):(\s)(.+)$/*\1*:\2\`\3\`/gm; s/\r//g'
+	timeout -s '9' "25" curl --silent -NkBL --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive --proto-default 'http' $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$URL" | sed -r 's/^(HTTP\/[0-9](\.[0-9])?)/Protocol: \1\n/g; s/^\s([0-9]{3}(\s\w)?)\b/Status: \1/gm; s/^([A-Za-z0-9-]+):(\s)(.+)$/*\1*:\2\`\3\`/gm; s/\r//g'
 
 }
 
 # This function is used to check updates of the custom CA certificate store
 CheckCAUpdate(){
 
-	timeout -s '9' "25" curl -LNkB --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive --remote-name --time-cond "$HOME/Unalix/Dependencies/cacert.pem" $NetworkProtocol $Socks5 $CACertOptions $DoHOptions  --user-agent "$UserAgent" --url 'https://curl.haxx.se:443/ca/cacert.pem'
+	timeout -s '9' "25" curl -LNkB --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive --remote-name --time-cond "$HOME/Unalix/Dependencies/cacert.pem" $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url 'https://curl.haxx.se:443/ca/cacert.pem'
 	
 }
 
@@ -939,7 +939,7 @@ SetupUnalix
 [ "$GenerateUserAgents" != 'false' ] && GenerateUserAgent || { UserAgent='Mozilla/5.0 (X11; Linux i586; rv:31.0) Gecko/20100101 Firefox/71.0'; }
 
 # A basic internet connection check
-echo -e '\033[0;33mChecking internet connection...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head $CACertOptions $NetworkProtocol $Socks5 --user-agent "$UserAgent" --url 'http://www.gnu.org:80/robots.txt' $DoHOptions -o '/dev/null' && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
+echo -e '\033[0;33mChecking internet connection...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head $CACertOptions $NetworkProtocol $Socks5 $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url 'http://www.gnu.org:80/robots.txt' -o '/dev/null' && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
 
 # Check updates of the custom CA certificate store (http://curl.haxx.se/docs/caextract.html)
 if [ "$CurlCustomCertificates" = 'true' ]; then
@@ -950,7 +950,7 @@ if [ "$CurlCustomCertificates" = 'true' ]; then
 fi
 
 # Check if the API can be accessed
-echo -e '\033[0;33mChecking access to the API...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head $CACertOptions $NetworkProtocol $Socks5 --user-agent "$UserAgent" --url 'https://api.telegram.org:443/robots.txt' $DoHOptions -o '/dev/null' && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
+echo -e '\033[0;33mChecking access to the API...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head $CACertOptions $NetworkProtocol $Socks5 $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url 'https://api.telegram.org:443/robots.txt' -o '/dev/null' && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
 
 # Import ShellBot functions library
 echo -e '\033[0;33mImporting functions..\033[0m.' && source "$HOME/Unalix/Dependencies/ShellBot.sh" && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mAn unknown error has occurred!\033[0m'; exit; }
