@@ -265,7 +265,7 @@ ParseTrackingParameters(){
 GetEndResults(){
 
 	if [ "$BatchMode" != 'true' ]; then
-		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && TypingStatus --stop-sending && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' --disable_web_page_preview 'true' || { TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
+		[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && ChatAction --stop-broadcast && sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$URL\`" --parse_mode 'markdown' --disable_web_page_preview 'true' || { ChatAction --stop-broadcast; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "The \`ParseTrackingParameters\` function has returned an invalid result." --parse_mode 'markdown'; }; cleanup
 	else
 		if [ "$Simultaneously" != 'true' ]; then
 			[[ "$URL" =~ ^https?://[a-zA-Z0-9._-]{1,}\.[a-zA-Z0-9._-]{2,}(:[0-9]{1,5})?(/|%2F|\?|#)?.*$ ]] && MakeURLCompatible && URL=$(echo "$URL" | sed 's/\//\\\//g; s/&/\\&/g') && sed -ri "s/\s\(\*\)$/ > $URL/g" "$EndResults" || { sed -ri "s/\s\(\*\)$/ > Could not process this link/g" "$EndResults"; }
@@ -293,7 +293,7 @@ MakeURLCompatible(){
 # Delete files and and/or exit process
 cleanup(){
 
-	TypingStatus --stop-sending
+	ChatAction --stop-broadcast
 	rm -rf "$OriginalLinksFilename" "$EndResults" "$CleanedURLs" "$SpecialEndRegex" "$EndRegex" "$TrashURLFilename" "$LinksFilename" "$GetFromURLsFilename" "$DNSAnswerFilename" "$IPAddressFilename" "$SimultaneouslyRequestsDirectory"
 	exit '0'
 
@@ -552,18 +552,27 @@ SolveURLIssues(){
 
 }
 
-# This function is used to send the action "typing" to the chat of the user who sent a link. This status will be sent while Unalix is processing a link
-TypingStatus(){
+# This function is used to send an "action" to the chat of the user who sent a link. This status will be sent while Unalix is processing a link
+ChatAction(){
 
 	# This is a loop. The action will be sent when the [-f "$MessageSent" ] command returns a positive value (0)
-	if [ "$1" = '--start-sending' ]; then
+	if [ "$1" = '--start-broadcast' ]; then
 		MessageSent="$HOME/Unalix/TempFiles/MessageSent-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt" && touch "$MessageSent"
-		while [ -f "$MessageSent" ]
-		do
-			sendChatAction --chat_id "$message_chat_id" --action 'typing' 1 > '/dev/null' 2 > '/dev/null'
-		done &
+		if [ "$2" = '--typing' ]; then
+			while [ -f "$MessageSent" ]
+			do
+				sendChatAction --chat_id "$message_chat_id" --action 'typing' 1 > '/dev/null' 2 > '/dev/null'
+			done &
+		elif [ "$2" = '--sending-document' ]; then
+			while [ -f "$MessageSent" ]
+			do
+				sendChatAction --chat_id "$message_chat_id" --action 'upload_document' 1 > '/dev/null' 2 > '/dev/null'
+			done &
+		else
+			echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
+		fi
 	# The loop will be broken when the $MessageSent file is deleted.
-	elif [ "$1" = '--stop-sending' ]; then
+	elif [ "$1" = '--stop-broadcast' ]; then
 		rm -f "$MessageSent"
 	else
 		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
@@ -594,7 +603,7 @@ ProcessLinks(){
 
 	if [[ $(wc -l < "$LinksFilename") -gt '1' ]]; then
 
-		TypingStatus --start-sending && BatchMode='true' && mv "$LinksFilename" "$OriginalLinksFilename" || { SendErrorMessage; }
+		ChatAction --start-broadcast --sending-document && BatchMode='true' && mv "$LinksFilename" "$OriginalLinksFilename" || { SendErrorMessage; }
 
 		for Domain in $(GetHostname < "$OriginalLinksFilename")
 		do
@@ -627,13 +636,13 @@ ProcessLinks(){
 		fi
 
 		head -c '50000000' < "$EndResults" > "$CleanedURLs"
-		TypingStatus --stop-sending && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$CleanedURLs" || { SendErrorMessage; }; cleanup
+		ChatAction --stop-broadcast && sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$CleanedURLs" || { SendErrorMessage; }; cleanup
 
 	else
 		URL=$(ParseText < "$LinksFilename" | head -n '1')
 		rm -f "$OriginalLinksFilename" "$LinksFilename"
 			
-		TypingStatus --start-sending
+		ChatAction --start-broadcast --typing
 	
 		Domain=$(echo "$URL" | GetHostname)
 		GetPunycode --from-variable
@@ -650,7 +659,7 @@ ProcessLinks(){
 # This function is used to send an error message to the user when an operation returns a negative value.
 SendErrorMessage(){
 
-	TypingStatus --stop-sending; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup
+	ChatAction --stop-broadcast; sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to process your request.'; cleanup
 
 }
 
@@ -735,7 +744,10 @@ BotCommand_decodetext(){
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text '*Usage:*\n\n`/decodetext <string_or_text_here>`\nor\n`!decodetext <string_or_text_here>`\n\n*Example:*\n\n`/decodetext %25c3%25a3%25c4%2581%25c3%25a5%25c3%25a4`\nor\n`!decodetext %25c3%25a3%25c4%2581%25c3%25a5%25c3%25a4`\n\n*Description:*\n\nThis command allows the user to convert UTF-8 characters to human-readable text.' --parse_mode 'markdown' || { SendErrorMessage; }; exit
 	# Decode text
 	elif [ "$1" = '--decode-text' ]; then
-		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "\`$(echo $message_text | sed -r 's/^(\!|\/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g; s/&/%26/g')\`" --parse_mode 'markdown' || { SendErrorMessage; }; exit
+		EndResults="$HOME/Unalix/TempFiles/EndResults-$(tr -dc '[:alnum:]' < '/dev/urandom' | head -c 10).txt"
+		message_text=$(echo "$message_text" | sed -r 's/^(\!|\/)(d|D)(e|E)(c|C)(o|O)(d|D)(e|E)(t|T)(e|E)(x|X)(t|T)\s*//g')
+		DecodeText "$message_text" > "$EndResults"
+		sendDocument --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --document "@$EndResults" || { SendErrorMessage; }; exit "$?"
 	else
 		echo -e '\033[0;31mInvalid function call received!\033[0m'; return '1'
 	fi
@@ -750,9 +762,9 @@ CheckUserQuery(){
 	elif echo "$UserQuery" | grep -Eq '\.i2p$'; then
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Domains related to the I2P network cannot be resolved.' || { SendErrorMessage; }; cleanup
 	elif echo "$UserQuery" | grep -Pq '[0-9a-zA-Z\.-]+\.[a-zA-Z\.]{2,6}'; then
-		GetPunycode --from-user-query && TypingStatus --start-sending && MakeDNSTest && ResolveQuery && QueryIP
+		GetPunycode --from-user-query && ChatAction --start-broadcast --typing && MakeDNSTest && ResolveQuery && QueryIP
 	elif echo "$UserQuery" | grep -Pq '((?:[a-f0-9]{1,4}:){6}(?::[a-f0-9]{1,4})|(?:[a-f0-9]{1,4}:){5}(?::[a-f0-9]{1,4}){1,2}|(?:[a-f0-9]{1,4}:){4}(?::[a-f0-9]{1,4}){1,3}|(?:[a-f0-9]{1,4}:){3}(?::[a-f0-9]{1,4}){1,4}|(?:[a-f0-9]{1,4}:){2}(?::[a-f0-9]{1,4}){1,5}|(?:[a-f0-9]{1,4}:)(?::[a-f0-9]{1,4}){1,6}|(?:[a-f0-9]{1,4}:){1,6}:|:(?::[a-f0-9]{1,4}){1,6}|[a-f0-9]{0,4}::|(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})'; then
-		TypingStatus --start-sending && IPAddress="$UserQuery" && QueryIP
+		ChatAction --start-broadcast --typing && IPAddress="$UserQuery" && QueryIP
 	else
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'Your query is invalid.' || { SendErrorMessage; }; cleanup
 	fi
@@ -858,7 +870,7 @@ QueryIP(){
 	fi
 
 	if MakeRequest; then
-		TypingStatus --stop-sending
+		ChatAction --stop-broadcast
 		if [ "$APIName" = 'ipapi.co' ]; then
 			sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text "*Query*: \`$(jq -r '.ip' < "$IPAddressFilename")\`\n*Owner*: \`$(jq -r '.asn' < "$IPAddressFilename")\` - \`$(jq -r '.org' < "$IPAddressFilename")\`\n*City*: \`$(jq -r '.city' < "$IPAddressFilename")\`\n*Region/State*: \`$(jq -r '.region' < "$IPAddressFilename")\`\n*Country*: \`$(jq -r '.country_name' < "$IPAddressFilename")\`\n*Latitude*: \`$(jq -r '.latitude' < "$IPAddressFilename")\`\n*Longitude*: \`$(jq -r '.longitude' < "$IPAddressFilename")\`\n*Postal Code*: \`$(jq -r '.postal' < "$IPAddressFilename")\`\n*Timezone*: \`$(jq -r '.timezone' < "$IPAddressFilename")\`" --parse_mode 'markdown' || { SendErrorMessage; }; cleanup
 		elif [ "$APIName" = 'ip-api.com' ]; then
