@@ -38,3 +38,4 @@ cm_mmc\=[^&]*
 epar\=[^&]*
 hl\=[^&]*
 s_term\=[^&]*
+ref_noscript\=[^&]*
