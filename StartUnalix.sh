@@ -493,35 +493,44 @@ GenerateYandex(){
 GenerateGeneric(){
 
 	# Generate a random number between 0 and 8
-	Selection=$(tr -dc '0-8' < '/dev/urandom' | head -c '1')
+	Selection=$(shuf -i 0-10 --random-source '/dev/urandom' | head -c '2')
 
 	# Generic browser on Android
 	if [ "$Selection" = '0' ]; then
 		UserAgent="Dalvik/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1') (Linux; U; Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]})"
-	# OkHttp on generic system
+	# OkHttp
 	elif [ "$Selection" = '1' ]; then
 		UserAgent="okhttp/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '2').$(tr -dc '0-9' < '/dev/urandom' | head -c '1')"
 	# Generic WebView on Android
 	elif [ "$Selection" = '2' ]; then
-		UserAgent="(Linux; U; Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]}; Cronet/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2'))"
-	# UptimeRobot on generic system (bot)
+		UserAgent="com.google.android.webview/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (Linux; U; Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]}; Cronet/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2'))"
+	# UptimeRobot
 	elif [ "$Selection" = '3' ]; then
 		UserAgent="Mozilla/$(tr -dc '4-5' < '/dev/urandom' | head -c '1').0+(compatible; UptimeRobot/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1'); http://www.uptimerobot.com/)"
-	# Zgrab on generic system
+	# Zgrab
 	elif [ "$Selection" = '4' ]; then
 		UserAgent="Mozilla/$(tr -dc '4-5' < '/dev/urandom' | head -c '1').0 zgrab/0.x"
 	# Telegram RSS (bot)
 	elif [ "$Selection" = '5' ]; then
 		UserAgent="Mozilla/$(tr -dc '4-5' < '/dev/urandom' | head -c '1').0 (compatible; rss2tg bot; +http://komar.in/en/rss2tg_crawler)"
-	 # WordPress on generic system
+	 # WordPress
 	elif [ "$Selection" = '6' ]; then
 		UserAgent="WordPress/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1')"
 	# Googlebot on Android
 	elif [ "$Selection" = '7' ]; then
 		UserAgent="Mozilla/5.0 (Linux; Android ${AndroidVersions[$(shuf -i 0-44 --random-source '/dev/urandom' | head -c '2')]}) AppleWebKit/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (KHTML, like Gecko) Chrome/$(tr -dc '1-9' < '/dev/urandom' | head -c '2').0.$(tr -dc '1-9' < '/dev/urandom' | head -c '4').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') Mobile Safari/$(tr -dc '1-9' < '/dev/urandom' | head -c '3').$(tr -dc '1-9' < '/dev/urandom' | head -c '2') (compatible; Googlebot/$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1'); +http://www.google.com/bot.html)"
-	# Nimbostratus-Bot
+	# Nimbostratus-bot
 	elif [ "$Selection" = '8' ]; then
 		UserAgent="Mozilla/5.0 (compatible; Nimbostratus-Bot/v$(tr -dc '1-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1').$(tr -dc '0-9' < '/dev/urandom' | head -c '1'); http://cloudsystemnetworks.com)"
+	# Telegram bot
+	elif [ "$Selection" = '9' ]; then
+		UserAgent='TelegramBot (like TwitterBot)'
+	# Artax
+	elif [ "$Selection" = '10' ]; then
+		UserAgent="amphp/http-client @ v$(tr -dc '1-9' < '/dev/urandom' | head -c '1').x"
+	# ArchiveBox
+	elif [ "$Selection" = '10' ]; then
+		UserAgent="ArchiveBox/$(tr -dc '0-9a-z' < '/dev/urandom' | head -c '41') (+https://github.com/pirate/ArchiveBox/)"
 	else
 		# If for some reason the "Selection" variable returns an invalid value, set a predefined user agent (Generic browser on generic system)
 		UserAgent='Generic/1.0.0'
@@ -794,13 +803,16 @@ MakeDNSTest(){
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'No DNS server can process your request at this time.' || { SendErrorMessage; }; cleanup
 	fi
 
+	DoHOptions="--doh-url $DoH"
+
 }
 
 # This function is used to check if the response sent by the server is positive
 CheckIfReachable(){
 
 	if [ "$2" = '--dns' ]; then
-		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf -H 'accept: application/dns-json' --no-progress-meter --head --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
+		echo "$1" | GetHostname | grep -Pq '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b' && unset 'DoHOptions' || { DoHOptions="--doh-url $DoH"; }
+		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf -H 'accept: application/dns-json' --no-progress-meter --head --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --request 'GET' --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
 	else
 		timeout -s '9' "$ConnectionTimeout" curl --silent -LNkBf --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$1" -o '/dev/null' && echo -e "\033[0;32m\"$(echo $1 | GetHostname)\" is reachable!\033[0m" || { echo -e "\033[0;31m\"$(echo $1 | GetHostname)\" is unreachable!\033[0m"; return '1'; }
 	fi
@@ -811,9 +823,10 @@ CheckIfReachable(){
 MakeRequest(){
 
 	if [ "$2" = '--resolve' ]; then
-		timeout -s '9' "$ConnectionTimeout" curl -LNkBf -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --request 'GET' --user-agent "$UserAgent" --url "$DNSResolver$1&do=false&cd=false" -o "$DNSAnswerFilename"
+		echo "$DNSResolver" | GetHostname | grep -Pq '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b' && unset 'DoHOptions' || { DoHOptions="--doh-url $DoH"; }
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --silent -H 'accept: application/dns-json' --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions --request 'GET' --user-agent "$UserAgent" --url "$DNSResolver$1&do=false&cd=false" -o "$DNSAnswerFilename"
 	else
-		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$API" -o "$IPAddressFilename"
+		timeout -s '9' "$ConnectionTimeout" curl -LNkBf --silent --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$API" -o "$IPAddressFilename"
 	fi
 
 }
@@ -831,7 +844,7 @@ ResolveQuery(){
 		sendMessage --reply_to_message_id "$message_message_id" --chat_id "$message_chat_id" --text 'An error occurred while trying to resolve the domain name.' || { SendErrorMessage; }; cleanup
 	fi
 
-	echo "$IPAddress"
+	DoHOptions="--doh-url $DoH"
 
 }
 
@@ -933,6 +946,7 @@ BotCommand_head(){
 # This function is used to make HEAD requests to websites/IP addresses sent through the command "/head"
 MakeHeadRequest(){
 
+	echo "$URL" | GetHostname | grep -Pq '\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b' && unset 'DoHOptions'
 	timeout -s '9' "25" curl --silent -NkBL --head --raw --no-progress-meter --no-sessionid --ssl-no-revoke --no-keepalive --proto-default 'http' $NetworkProtocol $Socks5 $CACertOptions $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url "$URL" | sed -r 's/^(HTTP\/[0-9](\.[0-9])?)/Protocol: \1\n/g; s/^\s([0-9]{3}(\s\w)?)\b/Status: \1/gm; s/^([A-Za-z0-9-]+):(\s)(.+)$/*\1*:\2\`\3\`/gm; s/\r//g'
 
 }
@@ -965,7 +979,7 @@ fi
 echo -e '\033[0;33mChecking access to the API...\033[0m' && timeout -s '9' "$ConnectionTimeout" curl -s --raw --ignore-content-length --head $CACertOptions $NetworkProtocol $Socks5 $DoHOptions -H 'Accept:' --request 'GET' --user-agent "$UserAgent" --url 'https://api.telegram.org:443/robots.txt' -o '/dev/null' && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mNo valid response received!\033[0m'; exit; }
 
 # Import ShellBot functions library
-echo -e '\033[0;33mImporting functions..\033[0m.' && source "$HOME/Unalix/Dependencies/ShellBot.sh" && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mAn unknown error has occurred!\033[0m'; exit; }
+echo -e '\033[0;33mImporting functions...\033[0m' && source "$HOME/Unalix/Dependencies/ShellBot.sh" && echo -e '\033[0;32mSuccess!\033[0m' || { echo -e '\033[0;31mAn unknown error has occurred!\033[0m'; exit; }
 
 # Start the bot
 echo -e '\033[0;33mStarting bot...\033[0m' && init --token "$BotToken" 1>/dev/null; echo -e '\033[0;32mSuccess!\033[0m'
