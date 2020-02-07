@@ -214,6 +214,7 @@ DetectPatterns(){
 	[ "$UseKabumRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/KabumRules.txt" >> "$EndRegex" && unset 'UseKabumRegex'
 	[ "$UseOuoIoRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/OuoIoRules.txt" >> "$EndRegex" && unset 'UseOuoIoRegex'
 	[ "$UseMercadoLibreRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/MercadoLibreRules.txt" >> "$EndRegex" && unset 'UseMercadoLibreRegex'
+	[ "$UseChangeOrgRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Common/ChangeOrgRules.txt" >> "$EndRegex" && unset 'UseChangeOrgRegex'
 	[ "$UseGoogleAMPRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Special/GoogleAMPRules.txt" > "$SpecialEndRegex" && unset 'UseGoogleAMPRegex'
 	[ "$UseMobileFieldsRegex" = 'true' ] && cat "$HOME/Unalix/Rules/Special/MobileFieldsRules.txt" >> "$SpecialEndRegex" && unset 'UseMobileFieldsRegex'
 
